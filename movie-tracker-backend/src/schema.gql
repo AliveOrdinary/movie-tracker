@@ -34,6 +34,8 @@ type LoginResponse {
 
 type Movie {
   backdropPath: String
+  backdropUrl: String!
+  credits: TMDBCredits!
   genres: [String!]!
   id: ID!
   isAdult: Boolean!
@@ -41,11 +43,13 @@ type Movie {
   originalTitle: String!
   overview: String!
   posterPath: String
+  posterUrl: String!
   releaseYear: Float!
   reviews: [Review!]
   runtime: Float!
   title: String!
   tmdbId: Float!
+  videos: [TMDBVideo!]!
 }
 
 type Mutation {
@@ -74,7 +78,17 @@ enum ProfileVisibility {
 }
 
 type Query {
+  discoverMovies(genreId: Int, page: Int = 1, year: Int): [TMDBMovie!]!
   me: User!
+  movie(tmdbId: Int!): Movie!
+  nowPlayingMovies(page: Int = 1): [TMDBMovie!]!
+  popularMovies(page: Int = 1): [TMDBMovie!]!
+  randomPopularMovie: TMDBMovie!
+  searchMovies(page: Int = 1, query: String!): [TMDBMovie!]!
+  similarMovies(page: Int = 1, tmdbId: Int!): [TMDBMovie!]!
+  topRatedMovies(page: Int = 1): [TMDBMovie!]!
+  trendingMovies(page: Int = 1, timeWindow: String! = "week"): [TMDBMovie!]!
+  upcomingMovies(page: Int = 1): [TMDBMovie!]!
   userByUsername(username: String!): User
   users: [User!]!
 }
@@ -124,6 +138,56 @@ type SocialLinks {
   letterboxd: String
   twitter: String
   website: String
+}
+
+type TMDBCast {
+  character: String
+  id: Int!
+  name: String!
+  order: Int!
+  profile_path: String
+}
+
+type TMDBCredits {
+  cast: [TMDBCast!]!
+  crew: [TMDBCrew!]!
+}
+
+type TMDBCrew {
+  department: String!
+  id: Int!
+  job: String!
+  name: String!
+  profile_path: String
+}
+
+type TMDBGenre {
+  id: Int!
+  name: String!
+}
+
+type TMDBMovie {
+  adult: Boolean!
+  backdrop_path: String
+  genre_ids: [Int!]!
+  id: Int!
+  original_language: String
+  original_title: String!
+  overview: String
+  poster_path: String
+  release_date: String!
+  title: String!
+  vote_average: Float!
+  vote_count: Int!
+}
+
+type TMDBVideo {
+  id: String!
+  key: String!
+  name: String!
+  official: Boolean!
+  site: String!
+  type: String!
 }
 
 input UpdateUserInput {

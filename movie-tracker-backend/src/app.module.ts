@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
@@ -10,6 +9,7 @@ import * as redisStore from 'cache-manager-redis-store';
 import { UsersModule } from './modules/users/users.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { AuthModule } from './auth/auth.module';
+import { MoviesModule } from './modules/movies/movies.module';
 import { join } from 'path';
 
 @Module({
@@ -34,6 +34,8 @@ import { join } from 'path';
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
+      playground: true,
+      introspection: true,
       context: ({ req, res }) => ({ req, res }),
     }),
     TypeOrmModule.forRootAsync({
@@ -65,6 +67,7 @@ import { join } from 'path';
     UsersModule,
     FirebaseModule,
     AuthModule,
+    MoviesModule, // Added MoviesModule
   ],
 })
 export class AppModule {}

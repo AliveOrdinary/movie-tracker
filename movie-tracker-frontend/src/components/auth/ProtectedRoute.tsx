@@ -1,6 +1,8 @@
+// src/components/auth/ProtectedRoute.tsx
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +15,7 @@ export function ProtectedRoute({ children, requiredRoles = [] }: ProtectedRouteP
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/login');
+      router.push('/auth/login');
     }
 
     if (!loading && isAuthenticated && requiredRoles.length > 0) {
@@ -25,14 +27,14 @@ export function ProtectedRoute({ children, requiredRoles = [] }: ProtectedRouteP
   }, [loading, isAuthenticated, requiredRoles, hasRole, router]);
 
   if (loading) {
-    return <div>Loading...</div>; // Replace with your loading component
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  if (requiredRoles.length > 0 && !requiredRoles.some(role => hasRole(role))) {
+  if (!isAuthenticated || (requiredRoles.length > 0 && !requiredRoles.some(role => hasRole(role)))) {
     return null;
   }
 

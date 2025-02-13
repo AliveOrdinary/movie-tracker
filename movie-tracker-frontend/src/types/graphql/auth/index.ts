@@ -1,3 +1,4 @@
+// src/graphql/auth/index.ts
 import { gql } from '@apollo/client';
 
 export const ME_QUERY = gql`

@@ -1,101 +1,124 @@
+// src/components/auth/LoginForm.tsx
+'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useApolloClient } from '@apollo/client';
-import { AuthService } from '@/lib/auth/authService';
+import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
-
+import { ReloadIcon } from '@radix-ui/react-icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
+import { GoogleSignInButton } from './GoogleSignInButton';
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const client = useApolloClient();
-  const authService = new AuthService(client);
+  const { signInWithEmail } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
-      await authService.login({ email, password });
+      await signInWithEmail(email, password);
       router.push('/dashboard');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      toast({
+        title: "Success",
+        description: "Successfully logged in",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to login'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md p-6 space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Welcome Back</h1>
-        <p className="text-gray-500">Sign in to your account to continue</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-            {error}
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Welcome Back</CardTitle>
+        <CardDescription>Sign in to your account to continue</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="Enter your email"
+              disabled={loading}
+            />
           </div>
-        )}
-
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Enter your email"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Enter your password"
-          />
-        </div>
-
-        <div className="text-right">
-          <Link
-            href="/forgot-password"
-            className="text-sm text-blue-600 hover:underline"
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="Enter your password"
+              disabled={loading}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading}
           >
-            Forgot password?
-          </Link>
+            {loading ? (
+              <>
+                <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign In with Email'
+            )}
+          </Button>
+        </form>
+        
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+        
+        <GoogleSignInButton />
+      </CardContent>
+      <CardFooter className="flex flex-col space-y-2">
+        <Link 
+          href="/auth/forgot-password"
+          className="text-sm text-blue-600 hover:underline"
         >
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
-
-        <div className="text-center text-sm">
+          Forgot password?
+        </Link>
+        <div className="text-sm text-gray-500">
           Don't have an account?{' '}
-          <Link href="/signup" className="text-blue-600 hover:underline">
+          <Link 
+            href="/auth/signup"
+            className="text-blue-600 hover:underline"
+          >
             Sign up
           </Link>
         </div>
-      </form>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

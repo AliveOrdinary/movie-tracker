@@ -1,150 +1,167 @@
+// src/components/auth/SignUpForm.tsx
+'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useApolloClient } from '@apollo/client';
-import { AuthService } from '@/lib/auth/authService';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { ReloadIcon } from '@radix-ui/react-icons';
+import { GoogleSignInButton } from './GoogleSignInButton';
+
+interface FormData {
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+}
 
 export function SignUpForm() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     username: '',
     password: '',
     confirmPassword: '',
   });
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const client = useApolloClient();
-  const authService = new AuthService(client);
+  const { signUp } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Passwords do not match"
+      });
       return;
     }
 
     setLoading(true);
 
     try {
-      const firebaseUser = await authService.signUp({
-        email: formData.email,
-        password: formData.password,
-        username: formData.username,
+      await signUp(formData.email, formData.password, formData.username);
+      toast({
+        title: "Success",
+        description: "Account created successfully",
       });
-
-      if (firebaseUser) {
-        await authService.sendEmailVerification(firebaseUser);
-      }
-
-      router.push('/email-verification');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      router.push('/dashboard');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create account"
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md p-6 space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Create an Account</h1>
-        <p className="text-gray-500">Sign up to get started</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-            {error}
+    <Card>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="john@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
           </div>
-        )}
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="johndoe"
+              value={formData.username}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              disabled={loading}
+              required
+            />
+          </div>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                Creating account...
+              </>
+            ) : (
+              'Create Account'
+            )}
+          </Button>
+        </form>
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Enter your email"
-          />
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="username" className="text-sm font-medium">
-            Username
-          </label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            value={formData.username}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Choose a username"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Create a password"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="confirmPassword" className="text-sm font-medium">
-            Confirm Password
-          </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded-md"
-            placeholder="Confirm your password"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Creating account...' : 'Create Account'}
-        </button>
-
-        <div className="text-center text-sm">
+        <GoogleSignInButton />
+      </CardContent>
+      <CardFooter className="justify-center">
+        <p className="text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/auth/login" className="text-primary hover:underline">
             Sign in
           </Link>
-        </div>
-      </form>
-    </div>
+        </p>
+      </CardFooter>
+    </Card>
   );
 }

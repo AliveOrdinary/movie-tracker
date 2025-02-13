@@ -15,16 +15,20 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
 
-    // Enable Helmet security headers
+    // Enable Helmet security headers with updated CSP
     app.use(helmet({
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: {
         directives: {
           defaultSrc: [`'self'`],
-          scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
-          styleSrc: [`'self'`, `'unsafe-inline'`],
+          scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`, 'cdn.jsdelivr.net', 'unpkg.com'],
+          styleSrc: [`'self'`, `'unsafe-inline'`, 'cdn.jsdelivr.net', 'unpkg.com'],
           imgSrc: [`'self'`, 'data:', 'https:'],
           connectSrc: [`'self'`, 'https://api.themoviedb.org'],
+          fontSrc: [`'self'`, 'https:', 'data:'],
+          objectSrc: [`'none'`],
+          mediaSrc: [`'self'`],
+          frameSrc: [`'self'`],
         },
       },
     }));

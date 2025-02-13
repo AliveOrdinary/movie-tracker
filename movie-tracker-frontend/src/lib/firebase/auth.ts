@@ -1,3 +1,4 @@
+// src/lib/firebase/auth.ts
 import { auth } from './config';
 import { 
   GoogleAuthProvider, 

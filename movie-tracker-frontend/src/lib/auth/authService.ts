@@ -1,3 +1,4 @@
+// src/lib/auth/authService.ts
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -7,7 +8,7 @@ import {
   confirmPasswordReset,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '@/lib/firebase/config';
 import { ApolloClient } from '@apollo/client';
 import {
   LOGIN_MUTATION,
@@ -16,7 +17,7 @@ import {
   CONFIRM_EMAIL_VERIFICATION,
   INITIATE_PASSWORD_RESET,
   CHANGE_PASSWORD,
-} from '@/graphql/auth';
+} from '@/types/graphql/auth';
 
 interface LoginInput {
   email: string;
