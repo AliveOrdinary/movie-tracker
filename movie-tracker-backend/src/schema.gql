@@ -1,0 +1,195 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""Filter options for activity feed"""
+enum ActivityFeedFilter {
+  ALL
+  FRIENDS
+  REVIEWS
+}
+
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+input InitiatePasswordResetInput {
+  email: String!
+}
+
+input LoginInput {
+  firebaseUid: String!
+}
+
+type LoginResponse {
+  token: String
+  user: User!
+}
+
+type Movie {
+  backdropPath: String
+  genres: [String!]!
+  id: ID!
+  isAdult: Boolean!
+  languages: [String!]!
+  originalTitle: String!
+  overview: String!
+  posterPath: String
+  releaseYear: Float!
+  reviews: [Review!]
+  runtime: Float!
+  title: String!
+  tmdbId: Float!
+}
+
+type Mutation {
+  changePassword(input: ChangePasswordInput!): Boolean!
+  initiatePasswordReset(input: InitiatePasswordResetInput!): Boolean!
+  login(input: LoginInput!): LoginResponse!
+  logout: Boolean!
+  removeUser(id: String!): Boolean!
+  resetPassword(input: ResetPasswordInput!): Boolean!
+  sendEmailVerification: Boolean!
+  updateUser(input: UpdateUserInput!): User!
+  verifyEmail: Boolean!
+  verifyPasswordResetCode(code: String!): PasswordResetVerificationResult!
+}
+
+type PasswordResetVerificationResult {
+  email: String!
+  isValid: Boolean!
+}
+
+"""The visibility level of a user profile"""
+enum ProfileVisibility {
+  FOLLOWERS
+  PRIVATE
+  PUBLIC
+}
+
+type Query {
+  me: User!
+  userByUsername(username: String!): User
+  users: [User!]!
+}
+
+input ResetPasswordInput {
+  email: String!
+  newPassword: String!
+}
+
+type Review {
+  containsSpoilers: Boolean!
+  content: String!
+  createdAt: DateTime!
+  helpfulVotes: Int!
+  id: ID!
+  isEdited: Boolean!
+  isFlagged: Boolean!
+  moderatedAt: DateTime
+  moderationReason: String
+  movie: Movie!
+  rating: Int!
+  status: ReviewStatus!
+  tags: [String!]
+  title: String!
+  updatedAt: DateTime!
+  user: User!
+}
+
+"""Status of a review"""
+enum ReviewStatus {
+  APPROVED
+  FLAGGED
+  PENDING
+  REJECTED
+}
+
+"""Sort order for reviews"""
+enum ReviewsSortOrder {
+  LATEST
+  LIKES
+  RATING
+}
+
+type SocialLinks {
+  facebook: String
+  instagram: String
+  letterboxd: String
+  twitter: String
+  website: String
+}
+
+input UpdateUserInput {
+  allowFriendRequests: Boolean
+  bio: String
+  displayName: String
+  email: String
+  favoriteGenres: [String!]
+  firebaseUid: String
+  location: String
+  showActivity: Boolean
+  showOnlineStatus: Boolean
+  showWatchlist: Boolean
+  username: String
+  website: String
+}
+
+type User {
+  activityFeedFilter: ActivityFeedFilter!
+  allowFriendRequests: Boolean!
+  avatarUrl: String
+  banReason: String
+  bannedAt: DateTime
+  bio: String
+  createdAt: DateTime!
+  email: String!
+  emailNotifications: Boolean!
+  emailVerified: Boolean!
+  favoriteGenres: [String!]
+  firebaseUid: String!
+  friendRequestNotifications: Boolean!
+  id: ID!
+  isBanned: Boolean!
+  lastActivityAt: DateTime
+  lastLoginAt: DateTime
+  lastWarningAt: DateTime
+  lastWarningReason: String
+  location: String
+  profileVisibility: ProfileVisibility!
+  reviewNotifications: Boolean!
+  reviews: [Review!]
+  reviewsSortOrder: ReviewsSortOrder!
+  roles: [UserRole!]!
+  showActivity: Boolean!
+  showOnlineStatus: Boolean!
+  showWatchlist: Boolean!
+  socialLinks: SocialLinks
+  suspendedUntil: DateTime
+  suspensionReason: String
+  updatedAt: DateTime!
+  username: String!
+  warningCount: Int!
+  watchlistDisplayMode: WatchlistDisplayMode!
+  watchlistNotifications: Boolean!
+  website: String
+}
+
+"""User role enumeration"""
+enum UserRole {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+"""Display mode for watchlist items"""
+enum WatchlistDisplayMode {
+  GRID
+  LIST
+}

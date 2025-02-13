@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: movie_tracker
+    volumes:
+      - movie_tracker_data:/var/lib/postgresql/data
+    networks:
+      - movie_tracker_network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - movie_tracker_network
+
+volumes:
+  movie_tracker_data:
+
+networks:
+  movie_tracker_network:
+    driver: bridge
