@@ -7,10 +7,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Movie } from '../../movies/entities/movie.entity';
+import { WatchHistory } from '../../watch-history/entities/watch-history.entity';
+import { ReviewReaction } from './review-reaction.entity';
 
 export enum ReviewStatus {
   PENDING = 'PENDING',
@@ -41,12 +45,13 @@ export class Review {
   @JoinColumn({ name: 'movie_id' })
   movie: Movie;
 
-  @Field()
-  @Column()
-  title: string;
+  @Field(() => WatchHistory, { nullable: true })
+  @OneToOne(() => WatchHistory)
+  @JoinColumn({ name: 'watch_history_id' })
+  watchHistory?: WatchHistory;
 
   @Field()
-  @Column('text')
+  @Column({ length: 300 }) // Enforcing 300 character limit
   content: string;
 
   @Field(() => Int)
@@ -60,6 +65,18 @@ export class Review {
     default: ReviewStatus.PENDING,
   })
   status: ReviewStatus;
+
+  @Field(() => Boolean)
+  @Column({ default: false })
+  containsSpoilers: boolean;
+
+  @Field(() => [ReviewReaction])
+  @OneToMany(() => ReviewReaction, reaction => reaction.review)
+  reactions: ReviewReaction[];
+
+  @Field(() => Int)
+  @Column({ default: 0 })
+  reactionCount: number;
 
   @Field({ nullable: true })
   @Column({ type: 'text', nullable: true })
@@ -84,10 +101,6 @@ export class Review {
   @Field(() => [String], { nullable: true })
   @Column('text', { array: true, nullable: true })
   tags?: string[];
-
-  @Field(() => Boolean)
-  @Column({ default: false })
-  containsSpoilers: boolean;
 
   @Field(() => Int)
   @Column({ default: 0 })

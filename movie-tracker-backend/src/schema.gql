@@ -14,6 +14,15 @@ input ChangePasswordInput {
   newPassword: String!
 }
 
+"""Permission level for list collaborators"""
+enum CollaboratorPermission {
+  ADD_ITEMS
+  EDIT_DETAILS
+  INVITE_OTHERS
+  REMOVE_ITEMS
+  VIEW
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -21,6 +30,58 @@ scalar DateTime
 
 input InitiatePasswordResetInput {
   email: String!
+}
+
+type List {
+  category: String
+  collaborators: [ListCollaborator!]!
+  createdAt: DateTime!
+  description: String
+  favoriteCount: Float!
+  id: ID!
+  isCollaborator: Boolean!
+  isFavorited: Boolean!
+  itemCount: Int!
+  items: [ListItem!]!
+  maxEntries: Float
+  name: String!
+  owner: User!
+  privacy: ListPrivacy!
+  thumbnail: String
+  type: ListType!
+  updatedAt: DateTime!
+  userPermissions: [CollaboratorPermission!]
+}
+
+type ListCollaborator {
+  addedBy: User!
+  createdAt: DateTime!
+  id: ID!
+  list: List!
+  permissions: [CollaboratorPermission!]!
+  user: User!
+}
+
+type ListItem {
+  addedBy: User!
+  createdAt: DateTime!
+  id: ID!
+  list: List!
+  movieId: Float!
+  order: Float!
+}
+
+"""Privacy level of the list"""
+enum ListPrivacy {
+  FOLLOWING
+  PRIVATE
+  PUBLIC
+}
+
+"""Type of list (standard or custom)"""
+enum ListType {
+  CUSTOM
+  STANDARD
 }
 
 input LoginInput {
@@ -93,6 +154,15 @@ type Query {
   users: [User!]!
 }
 
+"""Type of reaction on a review"""
+enum ReactionType {
+  DISAGREE
+  FUNNY
+  INSIGHTFUL
+  LIKE
+  LOVE
+}
+
 input ResetPasswordInput {
   email: String!
   newPassword: String!
@@ -110,10 +180,20 @@ type Review {
   moderationReason: String
   movie: Movie!
   rating: Int!
+  reactionCount: Int!
+  reactions: [ReviewReaction!]!
   status: ReviewStatus!
   tags: [String!]
-  title: String!
   updatedAt: DateTime!
+  user: User!
+  watchHistory: WatchHistory
+}
+
+type ReviewReaction {
+  createdAt: DateTime!
+  id: ID!
+  review: Review!
+  type: ReactionType!
   user: User!
 }
 
@@ -240,6 +320,7 @@ type User {
   updatedAt: DateTime!
   username: String!
   warningCount: Int!
+  watchHistory: [WatchHistory!]
   watchlistDisplayMode: WatchlistDisplayMode!
   watchlistNotifications: Boolean!
   website: String
@@ -250,6 +331,26 @@ enum UserRole {
   ADMIN
   MODERATOR
   USER
+}
+
+type WatchHistory {
+  createdAt: DateTime!
+  id: ID!
+  isPrivate: Boolean!
+  movie: Movie!
+  notes: String
+  rating: Float
+  updatedAt: DateTime!
+  user: User!
+  watchDuration: Int
+  watchType: WatchType!
+  watchedAt: DateTime!
+}
+
+"""Type of watch (first time or rewatch)"""
+enum WatchType {
+  FIRST_TIME
+  REWATCH
 }
 
 """Display mode for watchlist items"""

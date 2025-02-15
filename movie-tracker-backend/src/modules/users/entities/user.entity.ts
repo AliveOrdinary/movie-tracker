@@ -16,6 +16,7 @@ import {
   ReviewsSortOrder,
 } from '../../../common/enums/profile-settings.enum';
 import { Review } from '../../reviews/entities/review.entity';
+import { WatchHistory } from '../../watch-history/entities/watch-history.entity';
 
 @ObjectType()
 class SocialLinks {
@@ -67,6 +68,11 @@ export class User {
   @Field(() => [Review], { nullable: true })
   @OneToMany(() => Review, review => review.user)
   reviews?: Review[];
+
+  // Watch History Relationship
+  @Field(() => [WatchHistory], { nullable: true })
+  @OneToMany(() => WatchHistory, history => history.user)
+  watchHistory?: WatchHistory[];
 
   // Profile Settings
   @Field(() => ProfileVisibility)

@@ -1,7 +1,7 @@
 // src/modules/admin/services/content-management.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Review, ReviewStatus } from '../../reviews/entities/review.entity';
 import { ModerationLog, ModerationAction } from '../entities/moderation-log.entity';
 import { User } from '../../users/entities/user.entity';
@@ -55,8 +55,8 @@ export class ContentManagementService {
 
     return this.reviewRepository.findAndCount({
       where: [
-        { title: query },
-        { content: query },
+        { content: ILike(`%${query}%`) },
+        { user: { username: ILike(`%${query}%`) } }
       ],
       relations: ['user'],
       skip: (page - 1) * limit,
