@@ -11,8 +11,16 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CineTrack',
-  description: 'Track your favorite movies and TV shows',
+  title: 'CineTrack - Track Your Favorite Movies',
+  description: 'Discover and track your favorite movies with CineTrack',
+  keywords: ['movies', 'tracking', 'reviews', 'watchlist', 'cinema', 'films'],
+  authors: [{ name: 'CineTrack Team' }],
+  openGraph: {
+    type: 'website',
+    title: 'CineTrack',
+    description: 'Track your favorite movies and TV shows',
+    siteName: 'CineTrack',
+  },
 }
 
 export default function RootLayout({

@@ -9,22 +9,10 @@ import {
     Index,
     Unique
   } from 'typeorm';
-  import { ObjectType, Field, ID, registerEnumType } from '@nestjs/graphql';
+  import { ObjectType, Field, ID } from '@nestjs/graphql';
   import { List } from './list.entity';
   import { User } from '../../users/entities/user.entity';
-  
-  export enum CollaboratorPermission {
-    VIEW = 'view',
-    ADD_ITEMS = 'add_items',
-    REMOVE_ITEMS = 'remove_items',
-    EDIT_DETAILS = 'edit_details',
-    INVITE_OTHERS = 'invite_others'
-  }
-  
-  registerEnumType(CollaboratorPermission, {
-    name: 'CollaboratorPermission',
-    description: 'Permission level for list collaborators',
-  });
+import { CollaboratorPermission } from '../../../common/enums';
   
   @ObjectType()
   @Entity('list_collaborators')
@@ -40,24 +28,23 @@ import {
     @JoinColumn({ name: 'list_id' })
     list: List;
   
-    @Column()
-    listId: string;
+    @Column({ name: 'list_id' }) listId: string;
   
     @Field(() => User)
     @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
     user: User;
   
-    @Column()
-    userId: string;
+    @Column({ name: 'user_id' }) userId: string;
   
     @Field(() => [CollaboratorPermission])
-    @Column({
+    @Column({ 
       type: 'enum',
       enum: CollaboratorPermission,
       array: true,
-      default: [CollaboratorPermission.VIEW]
-    })
+      default: [CollaboratorPermission.VIEW],
+      name: 'permissions' // Keep DB column name, but use uppercase TypeScript enum
+    }) 
     permissions: CollaboratorPermission[];
   
     @Field(() => User)
@@ -65,10 +52,8 @@ import {
     @JoinColumn({ name: 'added_by_id' })
     addedBy: User;
   
-    @Column()
-    addedById: string;
+    @Column({ name: 'added_by_id' }) addedById: string;
   
     @Field()
-    @CreateDateColumn()
-    createdAt: Date;
+    @CreateDateColumn({ name: 'created_at' }) createdAt: Date;
   }

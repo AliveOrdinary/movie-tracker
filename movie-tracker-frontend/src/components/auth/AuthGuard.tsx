@@ -11,7 +11,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      console.log('AuthGuard: User is authenticated, redirecting to home');
+      router.push('/');
+    } else {
+      console.log('AuthGuard: Not authenticated or still loading', { loading, isAuthenticated: !!user });
     }
   }, [user, loading, router]);
 
@@ -23,9 +26,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // User is authenticated, don't render children (login/signup forms)
   if (!loading && user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p>Already authenticated. Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
+  // User is not authenticated, render the children (login/signup forms)
   return <>{children}</>;
 }

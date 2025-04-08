@@ -2,11 +2,224 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type ActionFrequency {
+  action: String!
+  count: Int!
+}
+
+type Activity {
+  createdAt: Timestamp!
+  id: ID!
+  list: List
+  metadata: String
+  movie: Movie
+  review: Review
+  targetUser: User
+  type: String!
+  user: User
+  watchHistory: WatchHistory
+}
+
+type ActivityComment {
+  activity: Activity!
+  childComments: [ActivityComment!]
+  content: String!
+  createdAt: Timestamp!
+  id: ID!
+  isEdited: Boolean!
+  likeCount: Int!
+  parentComment: ActivityComment
+  updatedAt: Timestamp!
+  user: User!
+}
+
 """Filter options for activity feed"""
 enum ActivityFeedFilter {
   ALL
   FRIENDS
   REVIEWS
+}
+
+input ActivityFiltersInput {
+  filter: ActivityFeedFilter
+  limit: Int = 20
+  page: Int = 1
+  types: [ActivityType!]
+}
+
+type ActivityReaction {
+  activity: Activity!
+  createdAt: Timestamp!
+  id: ID!
+  type: ReactionType!
+  user: User!
+}
+
+type ActivityResponse {
+  items: [Activity!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type ActivityStats {
+  activeLastMonth: Int!
+  activeLastWeek: Int!
+  activeToday: Int!
+  neverActive: Int!
+}
+
+"""Type of user activity"""
+enum ActivityType {
+  ADDED_REVIEW
+  BECAME_FRIENDS
+  COMMENTED_ON_REVIEW
+  CREATED_GROUP
+  CREATED_LIST
+  FOLLOWED_USER
+  JOINED_GROUP
+  LIKED_REVIEW
+  MILESTONE_REACHED
+  REVIEWED_MOVIE
+  REVIEW_COMMENT
+  REVIEW_EDIT
+  REVIEW_LIKE
+  REVIEW_REPORT
+  REVIEW_SHARE
+  SHARED_CONTENT
+  UPDATED_LIST
+  WATCHED_MOVIE
+}
+
+input AddCollaboratorInput {
+  listId: ID!
+  permissions: [CollaboratorPermission!]!
+  userId: ID!
+}
+
+input AddListItemInput {
+  listId: ID!
+  movieId: Float!
+  order: Float
+}
+
+input AddReactionInput {
+  reviewId: String!
+  type: ReactionType!
+}
+
+"""Types of admin actions"""
+enum AdminActionType {
+  BULK_ACTION_PERFORMED
+  CONTENT_MODERATED
+  REPORT_RESOLVED
+  SYSTEM_SETTING_CHANGED
+  USER_CREATED
+  USER_DELETED
+  USER_MODERATED
+  USER_ROLE_CHANGED
+  USER_UPDATED
+}
+
+type AdminAuditLog {
+  action: String!
+  actionType: AdminActionType
+  admin: User!
+  details: String
+  entityId: String
+  entityType: String
+  id: ID!
+  ipAddress: String!
+  metadata: String
+  targetUser: User
+  targetUserId: String
+  timestamp: Timestamp!
+}
+
+type AdminContentStats {
+  lists: ContentTypeStats!
+  popularMovies: [Movie!]!
+  reviews: ReviewStats!
+  trendingGenres: [GenreTrend!]!
+  watches: ContentTypeStats!
+}
+
+type AdminDashboardStats {
+  content: ContentStats!
+  moderation: ModerationStats!
+  users: DashboardUserStats!
+}
+
+input AuditLogFiltersInput {
+  actionType: AdminActionType
+  adminId: String
+  endDate: Timestamp
+  limit: Int = 10
+  page: Int = 1
+  startDate: Timestamp
+  targetUserId: String
+}
+
+type AutoModerationRule {
+  action: RuleAction!
+  contentType: ContentType!
+  createdAt: Timestamp!
+  createdBy: User!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  matchCount: Int!
+  metadata: String
+  name: String!
+  pattern: String!
+  ruleType: RuleType!
+  threshold: Int!
+  updatedAt: Timestamp!
+}
+
+type AutoModerationRuleResponse {
+  items: [AutoModerationRule!]!
+  limit: Int!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+input BulkContentOperationInput {
+  ids: [String!]!
+}
+
+input BulkListItemReorderInput {
+  itemIds: [String!]!
+  listId: String!
+}
+
+input BulkMovieAddInput {
+  listId: String!
+  movieIds: [Float!]!
+}
+
+input BulkMovieRemoveInput {
+  listId: String!
+  movieIds: [Float!]!
+}
+
+type BulkOperationResult {
+  errors: [String!]
+  failureCount: Int!
+  successCount: Int!
+}
+
+input BulkUserModerationInput {
+  action: ModerationAction!
+  reason: String!
+  userIds: [String!]!
+}
+
+input BulkUserRoleInput {
+  add: Boolean!
+  role: UserRole!
+  userIds: [String!]!
 }
 
 input ChangePasswordInput {
@@ -23,10 +236,297 @@ enum CollaboratorPermission {
   VIEW
 }
 
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
+"""Configuration categories"""
+enum ConfigCategory {
+  ANALYTICS
+  CONTENT
+  EMAIL
+  GENERAL
+  MODERATION
+  PERFORMANCE
+  SECURITY
+  SOCIAL
+  USERS
+}
+
+"""Configuration data types"""
+enum ConfigDataType {
+  BOOLEAN
+  EMAIL
+  INTEGER
+  JSON
+  NUMBER
+  STRING
+  URL
+}
+
+type ConfigExport {
+  key: String!
+  value: String!
+}
+
+input ConfigImport {
+  key: String!
+  value: String!
+}
+
+type ContentStats {
+  flaggedReviews: Int!
+  newReviewsToday: Int!
+  pendingReviews: Int!
+  totalLists: Int!
+  totalMovies: Int!
+  totalReviews: Int!
+  totalWatches: Int!
+}
+
+"""Type of content to be moderated"""
+enum ContentType {
+  LIST
+  REVIEW
+  USER_PROFILE
+}
+
+type ContentTypeStats {
+  lastMonth: Int!
+  lastWeek: Int!
+  today: Int!
+  total: Int!
+}
+
+type MovieCountryWatchProviders {
+  buy: [WatchProvider!]
+  flatrate: [WatchProvider!]
+  link: String!
+  rent: [WatchProvider!]
+}
+
+type CpuStats {
+  cpuUsage: Float!
+  numCores: Int!
+}
+
+input CreateAutoModerationRuleInput {
+  action: RuleAction!
+  contentType: ContentType!
+  description: String!
+  isActive: Boolean = true
+  name: String!
+
+  """JSON string pattern for rule matching"""
+  pattern: String!
+  ruleType: RuleType!
+  threshold: Int = 50
+}
+
+input CreateCommentInput {
+  activityId: String!
+  content: String!
+  parentCommentId: String
+}
+
+input CreateListInput {
+  category: String
+  description: String
+  maxEntries: Float
+  name: String!
+  privacy: ListPrivacy! = PRIVATE
+  thumbnail: String
+  type: ListType! = CUSTOM
+}
+
+input CreateModerationQueueItemInput {
+  contentId: String!
+  contentType: ContentType!
+  isAutoFlagged: Boolean
+  metadata: String
+  moderationNotes: String
+  priority: ModerationPriority
+}
+
+input CreateReactionInput {
+  activityId: String!
+  type: ReactionType!
+}
+
+input CreateReviewInput {
+  containsSpoilers: Boolean! = false
+  content: String!
+  movieId: String!
+  rating: Int!
+  tags: [String!]
+  watchHistoryId: String
+}
+
+input CreateSocialGroupInput {
+  SocialGroupPrivacy: GroupPrivacy!
+  description: String!
+  imageUrl: String
+  name: String!
+  tags: [String!]
+}
+
+input CreateSystemConfigInput {
+  category: ConfigCategory!
+  dataType: ConfigDataType
+  description: String
+  isEncrypted: Boolean! = false
+  isSystem: Boolean! = false
+  key: String!
+  value: String!
+}
+
+input CreateWatchInput {
+  contextTags: String
+  isFavorite: Boolean
+  isPrivate: Boolean
+  moodRating: Int
+  movieId: String!
+  notes: String
+  rating: Float
+  watchDuration: Int
+  watchType: WatchType!
+  watchedAt: Timestamp!
+}
+
+type DashboardUserStats {
+  activeLastWeek: Int!
+  activeToday: Int!
+  newLastMonth: Int!
+  newLastWeek: Int!
+  newToday: Int!
+  roleDistribution: [UserRoleStats!]!
+  total: Int!
+}
+
+type DatabaseStats {
+  activeConnections: Int
+  databaseSize: Float
+  totalRows: Int
+  totalTables: Int
+}
+
+input DiscoverMoviesInput {
+  genre: Int
+  genreIds: [Int!]
+  includeAdult: Boolean
+  includeVideo: Boolean
+  originalLanguage: String
+  page: Int
+  region: String
+  releaseDateGte: String
+  releaseDateLte: String
+  releaseYear: String
+  sortBy: String
+  voteAverageGte: Float
+  voteCountGte: Int
+  withKeywords: [String!]
+  withoutKeywords: [String!]
+  year: Int
+}
+
+input FileDeleteInput {
+  url: String!
+}
+
+type FileMetadata {
+  bucket: String!
+  cacheControl: String
+  contentDisposition: String
+  contentEncoding: String
+  contentType: String!
+  customMetadata: [String!]
+  downloadUrl: String!
+  fullPath: String!
+  generation: String
+  isPublic: Boolean!
+  md5Hash: String
+  metageneration: String
+  name: String!
+  path: String!
+  publicUrl: String!
+  size: Int!
+  storageClass: String
+  timeCreated: String!
+  updated: String!
+}
+
+input FileUploadInput {
+  contentType: String
+  filename: String!
+  folder: String! = "uploads"
+  isPublic: Boolean! = false
+}
+
+type FileUploadResponse {
+  filename: String!
+  metadata: FileMetadata!
+  path: String!
+  url: String!
+}
+
+input FollowUserInput {
+  userId: String!
+}
+
+type FriendRequest {
+  createdAt: Timestamp!
+  id: ID!
+  message: String
+  receiver: User
+  recipient: User!
+  sender: User!
+  status: FriendRequestStatus!
+  updatedAt: Timestamp!
+}
+
+"""Status of a friend request"""
+enum FriendRequestStatus {
+  ACCEPTED
+  CANCELED
+  PENDING
+  REJECTED
+}
+
+type FriendRequestsResponse {
+  items: [FriendRequest!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type GenreAnalytics {
+  count: Int!
+  genre: String!
+  growth: Int
+  percentage: Float
+}
+
+type GenreTrend {
+  count: Int!
+  genre: String!
+}
+
+"""Role of a user in a social group"""
+enum GroupMemberRole {
+  ADMIN
+  MEMBER
+  MODERATOR
+}
+
+"""Privacy level of a social group"""
+enum GroupPrivacy {
+  INVITATION
+  PRIVATE
+  PUBLIC
+}
+
+"""Health status of the system"""
+enum HealthStatus {
+  DEGRADED
+  HEALTHY
+  UNHEALTHY
+}
 
 input InitiatePasswordResetInput {
   email: String!
@@ -35,53 +535,93 @@ input InitiatePasswordResetInput {
 type List {
   category: String
   collaborators: [ListCollaborator!]!
-  createdAt: DateTime!
+  createdAt: Timestamp!
   description: String
   favoriteCount: Float!
   id: ID!
   isCollaborator: Boolean!
   isFavorited: Boolean!
+  isFeatured: Boolean!
   itemCount: Int!
   items: [ListItem!]!
   maxEntries: Float
   name: String!
   owner: User!
+  owner_id: String!
   privacy: ListPrivacy!
   thumbnail: String
   type: ListType!
-  updatedAt: DateTime!
+  updatedAt: Timestamp!
   userPermissions: [CollaboratorPermission!]
 }
 
 type ListCollaborator {
   addedBy: User!
-  createdAt: DateTime!
+  createdAt: Timestamp!
   id: ID!
   list: List!
   permissions: [CollaboratorPermission!]!
   user: User!
 }
 
+input ListFiltersInput {
+  category: String
+  includeCollaborative: Boolean = false
+  limit: Int = 10
+  onlyFavorites: Boolean = false
+  page: Int = 1
+  privacy: ListPrivacy
+  searchTerm: String
+  sortBy: String
+  sortDirection: String = "DESC"
+  type: ListType
+}
+
+type ListGenreStats {
+  count: Int!
+  genre: String!
+}
+
 type ListItem {
   addedBy: User!
-  createdAt: DateTime!
+  createdAt: Timestamp!
   id: ID!
   list: List!
   movieId: Float!
   order: Float!
 }
 
-"""Privacy level of the list"""
+type ListMovieStats {
+  averageRating: Float
+  genreDistribution: [ListGenreStats!]!
+  totalMovies: Int!
+  uniqueMovies: Int!
+  yearDistribution: [ListYearStats!]!
+}
+
+"""Privacy level of a list"""
 enum ListPrivacy {
   FOLLOWING
   PRIVATE
   PUBLIC
 }
 
+type ListResponse {
+  items: [List!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
 """Type of list (standard or custom)"""
 enum ListType {
   CUSTOM
   STANDARD
+}
+
+type ListYearStats {
+  count: Int!
+  year: Int!
 }
 
 input LoginInput {
@@ -93,37 +633,348 @@ type LoginResponse {
   user: User!
 }
 
+type MemoryStats {
+  freeMemory: Int!
+  totalMemory: Int!
+  usagePercentage: Float!
+  usedMemory: Int!
+}
+
+"""Type of moderation action"""
+enum ModerationAction {
+  LIST_APPROVED
+  LIST_FLAGGED
+  LIST_REJECTED
+  REVIEW_APPROVED
+  REVIEW_FLAGGED
+  REVIEW_REJECTED
+  USER_BANNED
+  USER_SUSPENDED
+  USER_WARNED
+}
+
+"""Priority of an item in the moderation queue"""
+enum ModerationPriority {
+  HIGH
+  LOW
+  MEDIUM
+  URGENT
+}
+
+type ModerationQueue {
+  assignedAt: Timestamp
+  assignedTo: User
+  contentId: String!
+  contentType: ContentType!
+  createdAt: Timestamp!
+  id: ID!
+  isAutoFlagged: Boolean!
+  list: List
+  metadata: String
+  moderatedAt: Timestamp
+  moderatedBy: User
+  moderationNotes: String
+  priority: ModerationPriority!
+  reportCount: Int!
+  review: Review
+  status: ModerationStatus!
+  targetUser: User
+  updatedAt: Timestamp!
+}
+
+type ModerationQueueResponse {
+  items: [ModerationQueue!]!
+  limit: Int!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type ModerationStatistics {
+  autoFlaggedCount: Int!
+  averageResolutionTimeMinutes: Int!
+  inReviewCount: Int!
+  pendingCount: Int!
+  todayResolvedCount: Int!
+  totalResolvedCount: Int!
+}
+
+type ModerationStats {
+  moderationLogsToday: Int!
+  pendingReports: Int!
+  resolvedReports: Int!
+  totalModerationLogs: Int!
+}
+
+"""Status of an item in the moderation queue"""
+enum ModerationStatus {
+  APPROVED
+  DELETED
+  IN_REVIEW
+  PENDING
+  REJECTED
+}
+
+type MonthlyWatchCount {
+  count: Int!
+  month: String!
+  year: Int!
+}
+
 type Movie {
   backdropPath: String
-  backdropUrl: String!
+  backdropUrl: String
+  createdAt: Timestamp!
   credits: TMDBCredits!
   genres: [String!]!
+  getImages: MovieImages
   id: ID!
+  images: MovieImages
   isAdult: Boolean!
+  isInWatchlist: Boolean
+  isPopular: Boolean!
   languages: [String!]!
   originalTitle: String!
   overview: String!
+  popularity: Float
   posterPath: String
-  posterUrl: String!
-  releaseYear: Float!
+  posterUrl: String
+  releaseYear: Int!
   reviews: [Review!]
-  runtime: Float!
+  runtime: Int
   title: String!
-  tmdbId: Float!
+  tmdbId: Int!
+  updatedAt: Timestamp!
+  userRating: Float
   videos: [TMDBVideo!]!
+  voteAverage: Float
+  voteCount: Int
+  watchProviders: MovieWatchProviders
+}
+
+type MovieImages {
+  backdrop: String
+  poster: String
+}
+
+input MovieReviewFilters {
+  endDate: Timestamp
+  limit: Int = 10
+  maxRating: Int
+  minRating: Int
+  onlyVerifiedWatches: Boolean
+  page: Int = 1
+  showSpoilers: Boolean
+  sortBy: String
+  startDate: Timestamp
+  status: ReviewStatus
+}
+
+type MovieWatchProviders {
+  id: Int!
+  results: WatchProvidersByCountry!
 }
 
 type Mutation {
+  acceptFriendRequest(requestId: String!): FriendRequest!
+  addActivityComment(input: CreateCommentInput!): ActivityComment!
+  addActivityReaction(input: CreateReactionInput!): ActivityReaction!
+  addBulkWatches(date: Timestamp!, movieIds: [String!]!): [WatchHistory!]!
+  addCollaborator(input: AddCollaboratorInput!): ListCollaborator!
+  addGroupMember(groupId: String!, role: String! = "MEMBER", userId: String!): SocialGroupMember!
+  addListItem(input: AddListItemInput!): ListItem!
+  addReaction(input: AddReactionInput!): Review!
+  adjustUserReputationScore(input: ReputationAdjustmentInput!): UserReputation!
+  approveModerationItem(id: String!, notes: String): ModerationQueue!
+  approveReview(id: String!): Review!
+  assignModerationItem(id: String!, moderatorId: String!): ModerationQueue!
+  assignModerationItemToSelf(id: String!): ModerationQueue!
+  banUser(reason: String!, userId: String!): User!
+  blockUser(reason: String, userId: String!): UserBlock!
+  bulkAddMovies(input: BulkMovieAddInput!): [ListItem!]!
+  bulkApproveReviews(input: BulkContentOperationInput!): Boolean!
+  bulkDeleteLists(input: BulkContentOperationInput!): Boolean!
+  bulkDeleteReviews(input: BulkContentOperationInput!): Boolean!
+  bulkFeatureLists(featured: Boolean!, input: BulkContentOperationInput!): Boolean!
+  bulkModerateUsers(input: BulkUserModerationInput!): UserBulkOperationResult!
+  bulkRefreshMoviesMetadata(input: BulkContentOperationInput!): Boolean!
+  bulkRejectReviews(input: BulkContentOperationInput!, reason: String): Boolean!
+  bulkRemoveMovies(input: BulkMovieRemoveInput!): Boolean!
+  bulkSetMoviesPopular(input: BulkContentOperationInput!, isPopular: Boolean!): Boolean!
+  bulkUpdateSystemConfigs(configs: [UpdateSystemConfigInput!]!): BulkOperationResult!
+  bulkUpdateUserRoles(input: BulkUserRoleInput!): UserBulkOperationResult!
+  cancelFriendRequest(requestId: String!): Boolean!
   changePassword(input: ChangePasswordInput!): Boolean!
+  checkEmailVerified: Boolean!
+  cloneList(listId: String!, newName: String!): List!
+  createAutoModerationRule(input: CreateAutoModerationRuleInput!): AutoModerationRule!
+  createList(input: CreateListInput!): List!
+  createModerationQueueItem(input: CreateModerationQueueItemInput!): ModerationQueue!
+  createReview(input: CreateReviewInput!): Review!
+  createSocialGroup(input: CreateSocialGroupInput!): SocialGroup!
+  createSystemConfig(input: CreateSystemConfigInput!): SystemConfig!
+  createWatch(input: CreateWatchInput!): WatchHistory!
+  deleteActivityComment(id: String!): Boolean!
+  deleteAutoModerationRule(id: String!): Boolean!
+  deleteFile(input: FileDeleteInput!): Boolean!
+  deleteList(id: String!): Boolean!
+  deleteModerationItem(id: String!, notes: String): ModerationQueue!
+  deleteNotification(id: String!): Boolean!
+  deleteReview(id: String!): Boolean!
+  deleteSocialGroup(groupId: String!): Boolean!
+  deleteSystemConfig(key: String!): Boolean!
+  deleteUser(keepContent: Boolean! = true, userId: String!): Boolean!
+  deleteWatch(id: String!): Boolean!
+  favoriteList(listId: String!): Boolean!
+  featureList(featured: Boolean!, listId: String!): Boolean!
+  flagReview(id: String!, reason: String!): Review!
+  followUser(input: FollowUserInput!): UserFollow!
+  importSystemConfigs(configs: [ConfigImport!]!): BulkOperationResult!
+  initializeDefaultConfigs: Boolean!
   initiatePasswordReset(input: InitiatePasswordResetInput!): Boolean!
+  joinGroup(groupId: String!): SocialGroupMember!
+  leaveGroup(groupId: String!): Boolean!
   login(input: LoginInput!): LoginResponse!
   logout: Boolean!
+  markAllNotificationsAsRead: Boolean!
+  markNotificationAsRead(id: String!): Notification!
+  refreshMovieMetadata(movieId: String!): Boolean!
+  rejectFriendRequest(requestId: String!): FriendRequest!
+  rejectModerationItem(id: String!, notes: String): ModerationQueue!
+  rejectReview(id: String!, reason: String!): Review!
+  removeActivityReaction(activityId: String!): Boolean!
+  removeCollaborator(collaboratorId: String!, listId: String!): Boolean!
+  removeFriend(userId: String!): Boolean!
+  removeGroupMember(groupId: String!, userId: String!): Boolean!
+  removeListItem(itemId: String!, listId: String!): Boolean!
+  removeReaction(input: RemoveReactionInput!): Review!
   removeUser(id: String!): Boolean!
+  reorderListItems(input: BulkListItemReorderInput!): Boolean!
+  reportContent(contentId: String!, contentType: ContentType!, reason: String!): ModerationQueue!
   resetPassword(input: ResetPasswordInput!): Boolean!
+  resolveReport(notes: String, reportId: String!, resolution: ReportResolution!): Report!
+  sendBulkSystemNotification(message: String!, metadata: String, userIds: [String!]!): Boolean!
   sendEmailVerification: Boolean!
+  sendFriendRequest(userId: String!): FriendRequest!
+  sendSystemNotification(message: String!, metadata: String, userId: String!): Notification!
+  setMoviePopular(isPopular: Boolean!, movieId: String!): Boolean!
+  suspendUser(reason: String!, userId: String!): User!
+  toggleFavoriteWatch(id: String!): WatchHistory!
+  unassignModerationItem(id: String!): ModerationQueue!
+  unbanUser(userId: String!): User!
+  unblockUser(userId: String!): Boolean!
+  unfollowUser(userId: String!): Boolean!
+  updateActivityComment(content: String!, id: String!): ActivityComment!
+  updateAutoModerationRule(input: UpdateAutoModerationRuleInput!): AutoModerationRule!
+  updateCollaborator(collaboratorId: String!, listId: String!, permissions: [CollaboratorPermission!]!): ListCollaborator!
+  updateGroupMemberRole(groupId: String!, role: String!, userId: String!): SocialGroupMember!
+  updateList(input: UpdateListInput!): List!
+  updateModerationQueueItem(input: UpdateModerationQueueItemInput!): ModerationQueue!
+  updateNotificationPreferences(input: NotificationPreferencesInput!): NotificationPreference!
+  updateReview(id: String!, input: UpdateReviewInput!): Review!
+  updateSocialGroup(groupId: String!, input: UpdateSocialGroupInput!): SocialGroup!
+  updateSystemConfig(input: UpdateSystemConfigInput!): SystemConfig!
   updateUser(input: UpdateUserInput!): User!
+  updateUserReputation(input: UpdateUserReputationInput!): UserReputation!
+  updateUserRole(add: Boolean! = true, role: UserRole!, userId: String!): User!
+  updateWatch(id: String!, input: UpdateWatchInput!): WatchHistory!
+  uploadFile(file: Upload!, input: FileUploadInput!): FileUploadResponse!
   verifyEmail: Boolean!
   verifyPasswordResetCode(code: String!): PasswordResetVerificationResult!
+  warnUser(reason: String!, userId: String!): User!
+}
+
+type Notification {
+  actor: User
+  createdAt: Timestamp!
+  id: ID!
+  isRead: Boolean!
+  list: List
+  message: String!
+  metadata: String
+  movie: Movie
+  review: Review
+  type: String!
+  user: User!
+}
+
+input NotificationFiltersInput {
+  limit: Int = 20
+  page: Int = 1
+  types: [NotificationType!]
+  unreadOnly: Boolean
+}
+
+type NotificationPreference {
+  createdAt: Timestamp!
+  disabledTypes: [String!]!
+  emailNotifications: Boolean!
+  friendRequestNotifications: Boolean!
+  id: ID!
+  movieReleaseNotifications: Boolean!
+  pushNotifications: Boolean!
+  reviewNotifications: Boolean!
+  systemNotifications: Boolean!
+  updatedAt: Timestamp!
+  watchlistNotifications: Boolean!
+}
+
+input NotificationPreferencesInput {
+  disabledTypes: [NotificationType!]
+  emailNotifications: Boolean
+  friendRequestNotifications: Boolean
+  movieReleaseNotifications: Boolean
+  pushNotifications: Boolean
+  reviewNotifications: Boolean
+  systemNotifications: Boolean
+  watchlistNotifications: Boolean
+}
+
+type NotificationResponse {
+  items: [Notification!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+  unreadCount: Int!
+}
+
+"""Type of notification"""
+enum NotificationType {
+  FOLLOW
+  LIST_COLLABORATION
+  LIST_FAVORITE
+  MOVIE_RELEASE
+  REVIEW_COMMENT
+  REVIEW_LIKE
+  SYSTEM_MESSAGE
+}
+
+type PaginatedAuditLogs {
+  items: [AdminAuditLog!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type PaginatedMovies {
+  page: Int!
+  results: [Movie!]!
+  totalPages: Int!
+  totalResults: Int!
+}
+
+type PaginatedSystemConfigs {
+  items: [SystemConfig!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type PaginatedUsers {
+  page: Int!
+  total: Int!
+  totalPages: Int!
+  users: [User!]!
 }
 
 type PasswordResetVerificationResult {
@@ -131,36 +982,249 @@ type PasswordResetVerificationResult {
   isValid: Boolean!
 }
 
-"""The visibility level of a user profile"""
+type PopularContentAnalytics {
+  lists: [PopularContentItem!]!
+  movies: [PopularContentItem!]!
+  reviews: [PopularContentItem!]!
+}
+
+type PopularContentItem {
+  count: Int!
+  id: String!
+  title: String!
+  type: String
+}
+
+type ProfileUserStats {
+  averageRating: Float!
+  favoritesCount: Int!
+  genreDistribution: [UserGenreDistribution!]!
+  totalFollowers: Int!
+  totalFollowing: Int!
+  totalLists: Int!
+  totalReviews: Int!
+  totalWatched: Int!
+  watchTimeMinutes: Int!
+  watchesPerMonth: Float!
+  yearlyWatchStats: [YearlyWatchStats!]!
+}
+
+"""Profile visibility settings"""
 enum ProfileVisibility {
-  FOLLOWERS
+  FRIENDS_ONLY
   PRIVATE
   PUBLIC
 }
 
 type Query {
-  discoverMovies(genreId: Int, page: Int = 1, year: Int): [TMDBMovie!]!
+  activityComments(activityId: String!, limit: Int! = 20, page: Int! = 1): [ActivityComment!]!
+  activityCommentsCount(activityId: String!): Int!
+  activityFeed(filters: ActivityFiltersInput): ActivityResponse!
+  activityReactions(activityId: String!, limit: Int! = 20, page: Int! = 1): [ActivityReaction!]!
+  activityReactionsCount(activityId: String!): Int!
+  adminActionFrequency(days: Int! = 30): [ActionFrequency!]!
+  adminAuditLogs(filter: AuditLogFiltersInput): PaginatedAuditLogs!
+  adminContentStats: AdminContentStats!
+  adminDashboard: AdminDashboardStats!
+  adminDashboardStats: AdminDashboardStats!
+  adminUserStats: UserAdminStats!
+  areFriends(userId: String!): Boolean!
+  autoModerationRule(id: String!): AutoModerationRule!
+  autoModerationRules(contentType: ContentType, isActive: Boolean, limit: Int, page: Int, ruleType: RuleType): AutoModerationRuleResponse!
+  blockedUsers(limit: Int! = 20, page: Int! = 1): UserBlockResponse!
+  blockedUsersCount: Int!
+  checkServiceHealth: Boolean!
+  collaborativeLists: [List!]!
+  currentWatchStreak: Int!
+  discoverMovies(input: DiscoverMoviesInput): PaginatedMovies!
+  entityModificationHistory(entityId: String!, entityType: String!): [AdminAuditLog!]!
+  exportSystemConfigs(includeEncrypted: Boolean! = false): [ConfigExport!]!
+  favoritedLists(limit: Int! = 10, page: Int! = 1): ListResponse!
+  fileExists(path: String!): Boolean!
+  flaggedReviews(limit: Int! = 10, page: Int! = 1): [Review!]!
+  followerCount(userId: String!): Int!
+  followingCount(userId: String!): Int!
+  friendCount(userId: String!): Int!
+  genreAnalytics: [GenreAnalytics!]!
+  getAllUsers(limit: Int! = 10, page: Int! = 1): PaginatedUsers!
+  getDownloadUrl(expirationMinutes: Float! = 15, filename: String, path: String!): String!
+  getFileMetadata(path: String!): FileMetadata!
+  getFriendRequestStatus(userId: String!): FriendRequest
+  getNextModerationItem: ModerationQueue
+  getSignedUrl(input: SignedUrlInput!): String!
+  groupMemberStatus(groupId: String!): SocialGroupMember
+  groupMembers(groupId: String!, limit: Int! = 20, page: Int! = 1): SocialGroupMemberResponse!
+  groupMembersCount(groupId: String!): Int!
+  isFollowing(userId: String!): Boolean!
+  isUserBlocked(userId: String!): Boolean!
+  listCreationStats: TimeSeriesData!
+  listFiles(folder: String! = "uploads", maxResults: Float! = 100, prefix: String): [String!]!
+  listItems(listId: String!): [ListItem!]!
+  listStats(listId: String!): ListMovieStats!
+  listsByCategory(category: String!, limit: Int! = 10, page: Int! = 1): ListResponse!
+  logAdminAction(action: String!, details: String, entityId: String, entityType: String): Boolean!
+  longestWatchStreak: Int!
   me: User!
+  moderationQueue(filters: String): ModerationQueueResponse!
+  moderationQueueItem(id: String!): ModerationQueue
+  moderationStatistics: ModerationStatistics!
   movie(tmdbId: Int!): Movie!
+  movieGenres: [TMDBGenre!]!
+  movieReviews(filters: MovieReviewFilters, movieId: String!): [Review!]!
+  movieWatchHistory(movieId: String!): [WatchHistory!]!
+  movieWatchStats(movieId: String!): WatchHistoryStats!
+  moviesByGenre(genreId: Int!, page: Int = 1): PaginatedMovies!
+  myLists(type: ListType): [List!]!
+  myRecentAdminActions(limit: Int! = 10): [AdminAuditLog!]!
+  myReviews(filters: UserReviewFilters): [Review!]!
+  myStats: ProfileUserStats!
+  notificationPreferences: NotificationPreference!
+  notifications(filters: NotificationFiltersInput): NotificationResponse!
   nowPlayingMovies(page: Int = 1): [TMDBMovie!]!
-  popularMovies(page: Int = 1): [TMDBMovie!]!
-  randomPopularMovie: TMDBMovie!
+  pendingReportsCount: Int!
+  pendingReviews(limit: Int! = 10, page: Int! = 1): [Review!]!
+  popularContentAnalytics(limit: Int! = 10): PopularContentAnalytics!
+  popularMovies(limit: Int! = 10, page: Int! = 1): [Movie!]!
+  receivedFriendRequests(limit: Int! = 20, page: Int! = 1): FriendRequestsResponse!
+  recommendedMovies(page: Int = 1, tmdbId: Int!): PaginatedMovies!
+  reportById(id: String!): Report
+  reportStats: ReportStats!
+  reportedContent(limit: Int = 10, page: Int = 1): ReportResponse!
+  review(id: String!): Review!
+  reviewTrends(period: Int! = 30, timeframe: TimeFrame! = DAY): TimeSeriesData!
+  reviews: [Review!]!
+  searchLists(filters: ListFiltersInput!): ListResponse!
   searchMovies(page: Int = 1, query: String!): [TMDBMovie!]!
-  similarMovies(page: Int = 1, tmdbId: Int!): [TMDBMovie!]!
+  searchUsers(limit: Int! = 10, page: Int! = 1, query: String!): PaginatedUsers!
+  sentFriendRequests(limit: Int! = 20, page: Int! = 1): FriendRequestsResponse!
+  serverUptime: Int!
+  similarMovies(page: Int = 1, tmdbId: Int!): PaginatedMovies!
+  socialGroup(groupId: String!): SocialGroup
+  socialGroups(filter: String, limit: Int! = 20, page: Int! = 1): SocialGroupResponse!
+  systemConfig(includeEncrypted: Boolean! = false, key: String!): SystemConfig
+  systemConfigCategories: [String!]!
+  systemConfigValue(defaultValue: String, key: String!): String
+  systemConfigs(filters: SystemConfigFiltersInput): PaginatedSystemConfigs!
+  systemConfigsByCategory(category: ConfigCategory!, includeEncrypted: Boolean! = false): [SystemConfig!]!
+  systemHealth: SystemHealthStatus!
+  systemStats: SystemStats!
   topRatedMovies(page: Int = 1): [TMDBMovie!]!
-  trendingMovies(page: Int = 1, timeWindow: String! = "week"): [TMDBMovie!]!
+  trendingLists(limit: Int! = 10, page: Int! = 1, timeframe: String! = "week"): ListResponse!
+  trendingMovies(page: Int = 1, timeWindow: String = "week"): [TMDBMovie!]!
+  unreadNotificationCount: Int!
   upcomingMovies(page: Int = 1): [TMDBMovie!]!
+  userActivity(filters: ActivityFiltersInput, userId: String!): ActivityResponse!
   userByUsername(username: String!): User
+  userFollowers(limit: Int! = 20, page: Int! = 1, userId: String!): [User!]!
+  userFollowing(limit: Int! = 20, page: Int! = 1, userId: String!): [User!]!
+  userFriends(limit: Int! = 20, page: Int! = 1, userId: String!): [User!]!
+  userGroups(limit: Int! = 20, page: Int! = 1, userId: String!): SocialGroupResponse!
+  userRegistrationTrends(period: Int! = 30, timeframe: TimeFrame! = DAY): TimeSeriesData!
+  userReputation(userId: String!): UserReputation!
+  userReputationsByLevel(level: ReputationLevel!, limit: Int, page: Int): UserReputationResponse!
+  userReputationsByScore(limit: Int, maxScore: Float!, minScore: Float!, page: Int): UserReputationResponse!
+  userRoleStats: [UserRoleStats!]!
+  userStats(userId: String!): ProfileUserStats!
+  userWatchStats(userId: String!): WatchHistoryStats!
   users: [User!]!
+  watch(id: String!): WatchHistory!
+  watchActivityTrends(period: Int! = 30, timeframe: TimeFrame! = DAY): TimeSeriesData!
+  watchHistory(filters: WatchHistoryFiltersInput, limit: Float = 10, page: Float = 10): [WatchHistory!]!
+  watchHistoryCount(filters: WatchHistoryFiltersInput): Int!
+  watchStats: WatchHistoryStats!
 }
 
-"""Type of reaction on a review"""
+type ReactionStats {
+  count: Int!
+  type: ReactionType!
+}
+
+"""Type of reaction on a review or activity"""
 enum ReactionType {
+  AGREE
+  ANGRY
   DISAGREE
-  FUNNY
-  INSIGHTFUL
+  LAUGH
   LIKE
   LOVE
+  SAD
+}
+
+type RegistrationStats {
+  lastMonth: Int!
+  lastWeek: Int!
+  today: Int!
+  total: Int!
+}
+
+input RemoveReactionInput {
+  reviewId: String!
+  type: ReactionType!
+}
+
+type Report {
+  contentId: String!
+  contentType: ContentType!
+  createdAt: Timestamp!
+  id: ID!
+  list: List
+  moderator: User
+  moderatorNotes: String
+  reason: String!
+  reporter: User!
+  resolution: ReportResolution
+  resolvedAt: Timestamp
+  review: Review
+  status: ReportStatus!
+  updatedAt: Timestamp!
+}
+
+"""Resolution type for a report"""
+enum ReportResolution {
+  DELETE
+  DISMISS
+  WARNING
+}
+
+type ReportResponse {
+  items: [Report!]!
+  limit: Int!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type ReportStats {
+  dismissedReports: Int!
+  pendingReports: Int!
+  resolvedReports: Int!
+  totalReports: Int!
+}
+
+"""Status of a content report"""
+enum ReportStatus {
+  DISMISSED
+  PENDING
+  RESOLVED
+}
+
+input ReputationAdjustmentInput {
+  adjustment: Float!
+  reason: String!
+  userId: String!
+}
+
+"""User reputation level"""
+enum ReputationLevel {
+  GOOD
+  LOW
+  NEUTRAL
+  NEW
+  QUESTIONABLE
+  RESTRICTED
+  TRUSTED
+  UNTRUSTED
+  VERIFIED
 }
 
 input ResetPasswordInput {
@@ -171,30 +1235,44 @@ input ResetPasswordInput {
 type Review {
   containsSpoilers: Boolean!
   content: String!
-  createdAt: DateTime!
+  createdAt: Timestamp!
   helpfulVotes: Int!
   id: ID!
+  isAutoModerated: Boolean!
   isEdited: Boolean!
   isFlagged: Boolean!
-  moderatedAt: DateTime
+  moderatedAt: Timestamp
   moderationReason: String
   movie: Movie!
   rating: Int!
   reactionCount: Int!
+  reactionStats: [ReactionStats!]!
   reactions: [ReviewReaction!]!
   status: ReviewStatus!
   tags: [String!]
-  updatedAt: DateTime!
+  updatedAt: Timestamp!
   user: User!
+  userReaction: ReactionType
   watchHistory: WatchHistory
 }
 
 type ReviewReaction {
-  createdAt: DateTime!
+  createdAt: Timestamp!
   id: ID!
   review: Review!
   type: ReactionType!
   user: User!
+}
+
+type ReviewStats {
+  approved: Int!
+  flagged: Int!
+  lastMonth: Int!
+  lastWeek: Int!
+  pending: Int!
+  rejected: Int!
+  today: Int!
+  total: Int!
 }
 
 """Status of a review"""
@@ -208,8 +1286,76 @@ enum ReviewStatus {
 """Sort order for reviews"""
 enum ReviewsSortOrder {
   LATEST
-  LIKES
-  RATING
+  MOST_POPULAR
+  OLDEST
+  RATING_HIGH
+  RATING_LOW
+}
+
+"""Action to take when an auto-moderation rule is triggered"""
+enum RuleAction {
+  DELETE
+  FLAG
+  NOTIFY_MODERATOR
+  REJECT
+}
+
+"""Type of auto-moderation rule"""
+enum RuleType {
+  CONTENT_SIMILARITY
+  KEYWORD
+  REGEX
+  SPAM_DETECTION
+  USER_REPUTATION
+}
+
+input SignedUrlInput {
+  expirationMinutes: Float! = 60
+  path: String!
+}
+
+type SocialGroup {
+  SocialGroupPrivacy: SocialGroupPrivacy!
+  avatarUrl: String
+  createdAt: Timestamp!
+  creator: User!
+  description: String
+  id: ID!
+  isMember: Boolean!
+  memberCount: Int!
+  members: [SocialGroupMember!]!
+  name: String!
+  updatedAt: Timestamp!
+}
+
+type SocialGroupMember {
+  createdAt: Timestamp!
+  group: SocialGroup!
+  id: ID!
+  role: GroupMemberRole!
+  updatedAt: Timestamp!
+  user: User!
+}
+
+type SocialGroupMemberResponse {
+  items: [SocialGroupMember!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+"""Privacy level of a social group"""
+enum SocialGroupPrivacy {
+  PRIVATE
+  PUBLIC
+  SECRET
+}
+
+type SocialGroupResponse {
+  items: [SocialGroup!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
 }
 
 type SocialLinks {
@@ -218,6 +1364,40 @@ type SocialLinks {
   letterboxd: String
   twitter: String
   website: String
+}
+
+type SystemConfig {
+  category: ConfigCategory!
+  createdAt: Timestamp!
+  dataType: ConfigDataType
+  description: String
+  isEncrypted: Boolean!
+  isSystem: Boolean!
+  key: ID!
+  updatedAt: Timestamp!
+  value: String!
+}
+
+input SystemConfigFiltersInput {
+  category: ConfigCategory
+  isSystem: Boolean
+  limit: Int = 20
+  page: Int = 1
+  searchTerm: String
+}
+
+type SystemHealthStatus {
+  issues: [String!]
+  status: HealthStatus!
+  timestamp: Timestamp!
+}
+
+type SystemStats {
+  cpu: CpuStats!
+  database: DatabaseStats
+  health: SystemHealthStatus!
+  memory: MemoryStats!
+  uptime: Int!
 }
 
 type TMDBCast {
@@ -246,6 +1426,11 @@ type TMDBGenre {
   name: String!
 }
 
+type TMDBLanguage {
+  iso_639_1: String!
+  name: String!
+}
+
 type TMDBMovie {
   adult: Boolean!
   backdrop_path: String
@@ -254,6 +1439,7 @@ type TMDBMovie {
   original_language: String
   original_title: String!
   overview: String
+  popularity: Float
   poster_path: String
   release_date: String!
   title: String!
@@ -270,13 +1456,105 @@ type TMDBVideo {
   type: String!
 }
 
+type TMDBWatchProvider {
+  logo_path: String!
+  provider_id: Int!
+  provider_name: String!
+}
+
+type TMDBWatchProviderData {
+  buy: [TMDBWatchProvider!]
+  flatrate: [TMDBWatchProvider!]
+  link: String!
+  rent: [TMDBWatchProvider!]
+}
+
+"""Time frame for analytics data"""
+enum TimeFrame {
+  DAY
+  MONTH
+  WEEK
+}
+
+type TimeSeriesData {
+  labels: [String!]!
+  period: Int!
+  series: [Int!]!
+  timeframe: String!
+}
+
+"""
+`Date` type as integer. Type represents date and time as number of milliseconds from start of UNIX epoch.
+"""
+scalar Timestamp
+
+type TopReviewer {
+  avatarUrl: String
+  id: String!
+  reviewCount: Int!
+  username: String!
+}
+
+input UpdateAutoModerationRuleInput {
+  action: RuleAction
+  description: String
+  id: String!
+  isActive: Boolean
+  name: String
+
+  """JSON string pattern for rule matching"""
+  pattern: String
+  threshold: Int
+}
+
+input UpdateListInput {
+  category: String
+  description: String
+  id: ID!
+  name: String
+  privacy: ListPrivacy
+  thumbnail: String
+}
+
+input UpdateModerationQueueItemInput {
+  assignedToId: String
+  id: String!
+  moderationNotes: String
+  priority: ModerationPriority
+  status: ModerationStatus
+}
+
+input UpdateReviewInput {
+  containsSpoilers: Boolean
+  content: String
+  rating: Int
+  tags: [String!]
+}
+
+input UpdateSocialGroupInput {
+  SocialGroupPrivacy: GroupPrivacy
+  description: String
+  imageUrl: String
+  name: String
+  tags: [String!]
+}
+
+input UpdateSystemConfigInput {
+  category: ConfigCategory
+  description: String
+  key: String!
+  value: String!
+}
+
 input UpdateUserInput {
   allowFriendRequests: Boolean
   bio: String
   displayName: String
   email: String
+  emailVerified: Boolean
   favoriteGenres: [String!]
   firebaseUid: String
+  lastActivityAt: Timestamp
   location: String
   showActivity: Boolean
   showOnlineStatus: Boolean
@@ -285,25 +1563,51 @@ input UpdateUserInput {
   website: String
 }
 
+input UpdateUserReputationInput {
+  reason: String
+  reputationLevel: ReputationLevel
+  reputationScore: Float
+  userId: String!
+}
+
+input UpdateWatchInput {
+  contextTags: String
+  isFavorite: Boolean
+  isPrivate: Boolean
+  moodRating: Int
+  notes: String
+  rating: Float
+  watchCount: Int
+  watchDuration: Int
+  watchType: WatchType
+  watchedAt: Timestamp
+}
+
+"""The `Upload` scalar type represents a file upload."""
+scalar Upload
+
 type User {
   activityFeedFilter: ActivityFeedFilter!
   allowFriendRequests: Boolean!
   avatarUrl: String
   banReason: String
-  bannedAt: DateTime
+  bannedAt: Timestamp
   bio: String
-  createdAt: DateTime!
+  createdAt: Timestamp!
   email: String!
   emailNotifications: Boolean!
   emailVerified: Boolean!
   favoriteGenres: [String!]
   firebaseUid: String!
+  followerCount: Int!
+  followingCount: Int!
   friendRequestNotifications: Boolean!
   id: ID!
   isBanned: Boolean!
-  lastActivityAt: DateTime
-  lastLoginAt: DateTime
-  lastWarningAt: DateTime
+  isFollowing: Boolean!
+  lastActivityAt: Timestamp
+  lastLoginAt: Timestamp
+  lastWarningAt: Timestamp
   lastWarningReason: String
   location: String
   profileVisibility: ProfileVisibility!
@@ -315,15 +1619,96 @@ type User {
   showOnlineStatus: Boolean!
   showWatchlist: Boolean!
   socialLinks: SocialLinks
-  suspendedUntil: DateTime
+  stats: ProfileUserStats!
+  suspendedUntil: Timestamp
   suspensionReason: String
-  updatedAt: DateTime!
+  updatedAt: Timestamp!
   username: String!
   warningCount: Int!
   watchHistory: [WatchHistory!]
   watchlistDisplayMode: WatchlistDisplayMode!
   watchlistNotifications: Boolean!
   website: String
+}
+
+type UserAdminStats {
+  activity: ActivityStats!
+  mostActiveUsers: [User!]!
+  registration: RegistrationStats!
+  topReviewers: [TopReviewer!]!
+}
+
+type UserBlock {
+  blocked: User!
+  blocker: User!
+  createdAt: Timestamp!
+  id: ID!
+  reason: String
+}
+
+type UserBlockResponse {
+  items: [UserBlock!]!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+type UserBulkOperationResult {
+  errors: [String!]
+  failureCount: Int!
+  successCount: Int!
+}
+
+type UserFollow {
+  createdAt: Timestamp!
+  follower: User!
+  following: User!
+  id: ID!
+}
+
+type UserGenreDistribution {
+  count: Int!
+  genre: String!
+  percentage: Float!
+}
+
+type UserReputation {
+  adminNotes: String
+  contentApprovedCount: Int!
+  contentRejectedCount: Int!
+  createdAt: Timestamp!
+  id: ID!
+  lastReviewAt: Timestamp
+  metadata: String
+  reportInvalidCount: Int!
+  reportValidCount: Int!
+  reportsCreatedCount: Int!
+  reputationLevel: ReputationLevel!
+  reputationScore: Float!
+  updatedAt: Timestamp!
+  user: User!
+  warningCount: Int!
+}
+
+type UserReputationResponse {
+  items: [UserReputation!]!
+  limit: Int!
+  page: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+input UserReviewFilters {
+  endDate: Timestamp
+  includePrivate: Boolean
+  limit: Int = 10
+  maxRating: Int
+  minRating: Int
+  page: Int = 1
+  showSpoilers: Boolean
+  sortBy: String
+  startDate: Timestamp
+  status: ReviewStatus
 }
 
 """User role enumeration"""
@@ -333,28 +1718,107 @@ enum UserRole {
   USER
 }
 
+type UserRoleStats {
+  count: Int!
+  percentage: Int!
+  role: UserRole!
+}
+
 type WatchHistory {
-  createdAt: DateTime!
+  contextTags: String
+  createdAt: Timestamp!
   id: ID!
+  isFavorite: Boolean
   isPrivate: Boolean!
-  movie: Movie!
+  moodRating: Int
+  movie: User
   notes: String
   rating: Float
-  updatedAt: DateTime!
-  user: User!
+  updatedAt: Timestamp!
+  user: User
+  watchCount: Int!
   watchDuration: Int
   watchType: WatchType!
-  watchedAt: DateTime!
+  watchedAt: Timestamp!
+}
+
+input WatchHistoryFiltersInput {
+  endDate: Timestamp
+  includePrivate: Boolean = false
+  limit: Int! = 10
+  maxRating: Float
+  minRating: Float
+  onlyFavorites: Boolean = false
+  page: Int! = 1
+  searchTerm: String
+  sortBy: String = "watchedAt"
+  sortDirection: String = "DESC"
+  startDate: Timestamp
+  tagFilter: String
+  watchType: WatchType
+}
+
+type WatchHistoryGenreDistribution {
+  count: Int!
+  genre: String!
+  percentage: Float!
+}
+
+type WatchHistoryStats {
+  averageMoodRating: Float
+  averageRating: Float!
+  averageWatchesPerMovie: Float
+  favoriteCount: Int
+  firstWatchDate: Timestamp
+  genreDistribution: [WatchHistoryGenreDistribution!]
+  lastWatchDate: Timestamp
+  monthlyWatchCounts: [MonthlyWatchCount!]
+  totalDays: Int
+  totalRewatches: Int
+  totalWatch: Int!
+  totalWatchTime: Int!
+  uniqueMovies: Int!
+  watchTypeDistribution: [WatchTypeDistribution!]
+  yearDistribution: [YearDistribution!]
+}
+
+type WatchProvider {
+  logo_path: String!
+  provider_id: Int!
+  provider_name: String!
+}
+
+type WatchProvidersByCountry {
+  US: MovieCountryWatchProviders
 }
 
 """Type of watch (first time or rewatch)"""
 enum WatchType {
   FIRST_TIME
+  PARTIAL
   REWATCH
 }
 
-"""Display mode for watchlist items"""
+type WatchTypeDistribution {
+  count: Int!
+  percentage: Float!
+  type: String!
+}
+
+"""Display mode for watchlist"""
 enum WatchlistDisplayMode {
+  DETAIL
   GRID
   LIST
+}
+
+type YearDistribution {
+  count: Int!
+  percentage: Float!
+  year: Int!
+}
+
+type YearlyWatchStats {
+  count: Int!
+  year: Int!
 }

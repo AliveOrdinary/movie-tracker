@@ -2,18 +2,20 @@
 import { Resolver, Query, Mutation, Args, ResolveField, Parent, Int, ObjectType, Field } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
+import { ReviewsTmdbService } from './reviews-tmdb.service';
 import { Review } from './entities/review.entity';
-import { ReviewReaction, ReactionType } from './entities/review-reaction.entity';
 import { CreateReviewInput } from './dto/create-review.input';
 import { UpdateReviewInput } from './dto/update-review.input';
 import { AddReactionInput } from './dto/add-reaction.input';
 import { RemoveReactionInput } from './dto/remove-reaction.input';
-import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth.guard';
+import { AuthGuard } from '../../auth/guards/auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { User } from '../users/entities/user.entity';
-import { UserRole } from '../../common/enums/roles.enum';
+import { ReactionType, UserRole, ReviewStatus } from 'src/common/enums';
+import { ModerationService } from '../moderation/moderation.service';
+import { MovieReviewFilters, UserReviewFilters } from './types/review-filters.type';
 
 @ObjectType()
 class ReactionStats {
@@ -26,15 +28,20 @@ class ReactionStats {
 
 @Resolver(() => Review)
 export class ReviewsResolver {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly reviewsTmdbService: ReviewsTmdbService,
+    private readonly moderationService: ModerationService
+  ) {}
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async createReview(
-    @Args('input') input: CreateReviewInput,
     @CurrentUser() user: User,
+    @Args('input') input: CreateReviewInput,
   ): Promise<Review> {
-    return this.reviewsService.create(input, user);
+    // Now use the new ReviewsTmdbService that handles TMDB ID conversion
+    return this.reviewsTmdbService.createReview(input, user);
   }
 
   @Query(() => [Review])
@@ -48,49 +55,61 @@ export class ReviewsResolver {
   }
 
   @Query(() => [Review])
-  @UseGuards(FirebaseAuthGuard)
-  async myReviews(@CurrentUser() user: User): Promise<Review[]> {
-    return this.reviewsService.findByUser(user.id);
+  @UseGuards(AuthGuard)
+  async myReviews(
+    @CurrentUser() user: User,
+    @Args('filters', { nullable: true }) filters?: UserReviewFilters
+  ): Promise<Review[]> {
+    const [reviews] = await this.reviewsService.findByUser(user.id, filters);
+    return reviews;
   }
 
   @Query(() => [Review])
-  async movieReviews(@Args('movieId') movieId: string): Promise<Review[]> {
-    return this.reviewsService.findByMovie(movieId);
+  async movieReviews(
+    @Args('movieId') movieId: string,
+    @Args('filters', { nullable: true }) filters?: MovieReviewFilters
+  ): Promise<Review[]> {
+    const [reviews] = await this.reviewsService.findByMovie(movieId, filters);
+    return reviews;
   }
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async updateReview(
+    @CurrentUser() user: User,
     @Args('id') id: string,
     @Args('input') input: UpdateReviewInput,
-    @CurrentUser() user: User,
   ): Promise<Review> {
-    return this.reviewsService.update(id, input, user);
+    return this.reviewsService.update(id, {
+      ...input,
+      user,
+      isEdited: true
+    });
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async deleteReview(
-    @Args('id') id: string,
     @CurrentUser() user: User,
+    @Args('id') id: string,
   ): Promise<boolean> {
     return this.reviewsService.remove(id, user);
   }
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async addReaction(
-    @Args('input') input: AddReactionInput,
     @CurrentUser() user: User,
+    @Args('input') input: AddReactionInput,
   ): Promise<Review> {
     return this.reviewsService.addReaction(input, user);
   }
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async removeReaction(
-    @Args('input') input: RemoveReactionInput,
     @CurrentUser() user: User,
+    @Args('input') input: RemoveReactionInput,
   ): Promise<Review> {
     return this.reviewsService.removeReaction(input.reviewId, input.type, user);
   }
@@ -115,29 +134,52 @@ export class ReviewsResolver {
 
   // Moderation endpoints
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
-  async approveReview(@Args('id') id: string): Promise<Review> {
-    return this.reviewsService.approveReview(id);
+  async approveReview(@Args('id') id: string, @CurrentUser() moderator: User): Promise<Review> {
+    return this.moderationService.approveReview(id, moderator);
   }
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   async rejectReview(
+    @CurrentUser() moderator: User,
     @Args('id') id: string,
-    @Args('reason') reason: string,
+    @Args('reason') reason: string, 
   ): Promise<Review> {
-    return this.reviewsService.rejectReview(id, reason);
+    return this.moderationService.rejectReview(id, reason, moderator);
   }
 
   @Mutation(() => Review)
-  @UseGuards(FirebaseAuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   async flagReview(
+    @CurrentUser() moderator: User,
     @Args('id') id: string,
     @Args('reason') reason: string,
   ): Promise<Review> {
-    return this.reviewsService.flagReview(id, reason);
+    return this.moderationService.flagReview(id, reason, moderator);
+  }
+
+  // Additional fields to expose moderation status
+  @ResolveField('isFlagged', () => Boolean, { nullable: true })
+  getIsFlagged(@Parent() review: Review): boolean {
+    return review.isFlagged || false;
+  }
+
+  @ResolveField('isAutoModerated', () => Boolean, { nullable: true })
+  getIsAutoModerated(@Parent() review: Review): boolean {
+    return review.isAutoModerated || false;
+  }
+
+  @ResolveField('moderationReason', () => String, { nullable: true })
+  getModerationReason(@Parent() review: Review): string | null {
+    return review.moderationReason || null;
+  }
+
+  @ResolveField('moderatedAt', () => Date, { nullable: true })
+  getModeratedAt(@Parent() review: Review): Date | null {
+    return review.moderatedAt || null;
   }
 }

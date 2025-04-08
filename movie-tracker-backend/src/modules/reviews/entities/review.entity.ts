@@ -1,5 +1,5 @@
 // src/modules/reviews/entities/review.entity.ts
-import { ObjectType, Field, ID, Int, registerEnumType } from '@nestjs/graphql';
+import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import {
   Entity,
   Column,
@@ -15,18 +15,7 @@ import { User } from '../../users/entities/user.entity';
 import { Movie } from '../../movies/entities/movie.entity';
 import { WatchHistory } from '../../watch-history/entities/watch-history.entity';
 import { ReviewReaction } from './review-reaction.entity';
-
-export enum ReviewStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  FLAGGED = 'FLAGGED',
-}
-
-registerEnumType(ReviewStatus, {
-  name: 'ReviewStatus',
-  description: 'Status of a review',
-});
+import { ReviewStatus } from '../../../common/enums';
 
 @ObjectType()
 @Entity('reviews')
@@ -59,15 +48,16 @@ export class Review {
   rating: number;
 
   @Field(() => ReviewStatus)
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: ReviewStatus,
     default: ReviewStatus.PENDING,
-  })
+    name: 'status' 
+  }) 
   status: ReviewStatus;
 
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'contains_spoilers' }) 
   containsSpoilers: boolean;
 
   @Field(() => [ReviewReaction])
@@ -75,27 +65,27 @@ export class Review {
   reactions: ReviewReaction[];
 
   @Field(() => Int)
-  @Column({ default: 0 })
+  @Column({ name: 'reaction_count', default: 0 })
   reactionCount: number;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'moderation_reason' })
   moderationReason?: string;
 
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'is_flagged' }) 
   isFlagged: boolean;
 
   @Field({ nullable: true })
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'moderated_at' })
   moderatedAt?: Date;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' }) 
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' }) 
   updatedAt: Date;
 
   @Field(() => [String], { nullable: true })
@@ -103,10 +93,14 @@ export class Review {
   tags?: string[];
 
   @Field(() => Int)
-  @Column({ default: 0 })
+  @Column({ default: 0, name: 'helpful_votes' }) 
   helpfulVotes: number;
 
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'is_edited' }) 
   isEdited: boolean;
+
+  @Field(() => Boolean)
+  @Column({ default: false, name: 'is_auto_moderated' }) 
+  isAutoModerated: boolean;
 }

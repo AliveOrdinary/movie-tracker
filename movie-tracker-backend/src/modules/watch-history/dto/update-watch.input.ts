@@ -1,7 +1,7 @@
 // src/modules/watch-history/dto/update-watch.input.ts
 import { InputType, Field, Int, Float } from '@nestjs/graphql';
-import { IsDate, IsEnum, IsOptional, IsBoolean, IsNumber, Min, Max } from 'class-validator';
-import { WatchType } from '../entities/watch-history.entity';
+import { IsDate, IsEnum, IsOptional, IsBoolean, IsNumber, Min, Max, IsString } from 'class-validator';
+import { WatchType } from 'src/common/enums';
 
 @InputType()
 export class UpdateWatchInput {
@@ -36,4 +36,27 @@ export class UpdateWatchInput {
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  isFavorite?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  contextTags?: string;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  moodRating?: number;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  watchCount?: number;
 }

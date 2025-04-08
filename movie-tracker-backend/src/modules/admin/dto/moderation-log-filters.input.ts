@@ -1,7 +1,8 @@
 //src/modules/admin/dto/moderation-log-filters.input.ts
 import { InputType, Field, Int } from '@nestjs/graphql';
 import { IsEnum, IsUUID, IsOptional, IsBoolean, IsInt, Min, Max } from 'class-validator';
-import { ModerationAction } from '../entities/moderation-log.entity';
+import { ModerationAction } from 'src/common/enums';
+
 
 @InputType()
 export class ModerationLogFiltersInput {

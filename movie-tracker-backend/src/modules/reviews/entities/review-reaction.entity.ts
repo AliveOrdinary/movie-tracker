@@ -1,5 +1,5 @@
 // src/modules/reviews/entities/review-reaction.entity.ts
-import { ObjectType, Field, ID, registerEnumType } from '@nestjs/graphql';
+import { ObjectType, Field, ID } from '@nestjs/graphql';
 import {
   Entity,
   Column,
@@ -11,19 +11,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Review } from './review.entity';
-
-export enum ReactionType {
-  LIKE = 'LIKE',
-  LOVE = 'LOVE',
-  FUNNY = 'FUNNY',
-  INSIGHTFUL = 'INSIGHTFUL',
-  DISAGREE = 'DISAGREE'
-}
-
-registerEnumType(ReactionType, {
-  name: 'ReactionType',
-  description: 'Type of reaction on a review',
-});
+import { ReactionType } from '../../../common/enums';
 
 @ObjectType()
 @Entity('review_reactions')
@@ -51,6 +39,5 @@ export class ReviewReaction {
   type: ReactionType;
 
   @Field()
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_at' }) createdAt: Date;
 }

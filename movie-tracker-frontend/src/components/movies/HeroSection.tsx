@@ -66,13 +66,28 @@ export function HeroSection() {
           </Card>
 
           <div className="flex flex-wrap justify-center gap-4">
-            <Button variant="outline" size="lg" className="bg-background/95">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="bg-background/95"
+              onClick={() => router.push('/movies')}
+            >
               Browse Popular
             </Button>
-            <Button variant="outline" size="lg" className="bg-background/95">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="bg-background/95"
+              onClick={() => router.push('/movies/top-rated')}
+            >
               Top Rated
             </Button>
-            <Button variant="outline" size="lg" className="bg-background/95">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="bg-background/95"
+              onClick={() => router.push('/movies/now-playing')}
+            >
               Now Playing
             </Button>
           </div>

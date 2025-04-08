@@ -1,7 +1,7 @@
 // src/components/auth/LoginForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
@@ -17,27 +17,60 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Already authenticated, redirecting to home page');
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
+      console.log('Attempting to sign in with:', email);
       await signInWithEmail(email, password);
-      router.push('/dashboard');
+      console.log('Sign in successful, routing to homepage');
+      
+      // Show success toast
       toast({
         title: "Success",
         description: "Successfully logged in",
       });
+      
+      // Force a hard refresh to ensure all contexts are properly updated
+      window.location.href = '/';
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to login'
-      });
-    } finally {
-      setLoading(false);
+      console.error('Login error:', error);
+      
+      // Check for read-only property error
+      const errorMessage = error instanceof Error ? error.message : 'Failed to login';
+      const isReadOnlyError = errorMessage.includes('read only property');
+      
+      if (isReadOnlyError) {
+        // If it's a read-only error, try a direct page refresh to clear cache
+        toast({
+          title: "Authentication successful",
+          description: "Refreshing page to complete login..."
+        });
+        
+        // Force a page refresh
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } else {
+        // For other errors, show the error message
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage
+        });
+        setLoading(false);
+      }
     }
   };
 

@@ -1,12 +1,7 @@
-//src/modules/admin/dto/resolve-report.input.ts
+// src/modules/admin/dto/resolve-report.input.ts
 import { InputType, Field } from '@nestjs/graphql';
-import { IsUUID, IsString, IsEnum, IsOptional } from 'class-validator';
-
-export enum ReportResolution {
-  DELETE = 'DELETE',
-  WARNING = 'WARNING',
-  DISMISS = 'DISMISS'
-}
+import { IsUUID, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ReportResolution } from 'src/common/enums';
 
 @InputType()
 export class ResolveReportInput {
@@ -21,5 +16,5 @@ export class ResolveReportInput {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
-  notes?: string;
+  moderatorNotes?: string;
 }

@@ -4,9 +4,10 @@ import { IsString, IsInt, Min, Max, MinLength, MaxLength, IsUUID, IsOptional, Is
 
 @InputType()
 export class CreateReviewInput {
-  @Field()
-  @IsUUID()
-  movieId: string;
+  @Field(() => Int)
+  @IsInt()
+  @Min(1, { message: 'Movie TMDB ID must be a positive integer' })
+  tmdbId: number; // Using TMDB ID instead of internal UUID
 
   @Field(() => String)
   @IsString()
@@ -33,4 +34,9 @@ export class CreateReviewInput {
   @IsOptional()
   @IsUUID()
   watchHistoryId?: string;
+  
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  movieMetadata?: string;
 }

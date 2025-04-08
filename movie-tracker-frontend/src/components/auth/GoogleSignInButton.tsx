@@ -3,30 +3,63 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { ReloadIcon } from "@radix-ui/react-icons";
 
 export function GoogleSignInButton() {
   const [loading, setLoading] = useState(false);
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Already authenticated, redirecting to home page');
+      window.location.href = '/';
+    }
+  }, [isAuthenticated]);
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      console.log('Starting Google sign-in...');
       await signInWithGoogle();
+      console.log('Google sign-in completed, showing success toast');
+      
       toast({
         title: "Success",
         description: "Successfully signed in with Google",
       });
+      
+      // Force a hard refresh to ensure all contexts are properly updated
+      window.location.href = '/';
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sign in with Google"
-      });
-    } finally {
-      setLoading(false);
+      console.error('Google sign-in error:', error);
+      
+      // Check for read-only property error
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in with Google';
+      const isReadOnlyError = errorMessage.includes('read only property');
+      
+      if (isReadOnlyError) {
+        // If it's a read-only error, try a direct page refresh to clear cache
+        toast({
+          title: "Authentication successful",
+          description: "Refreshing page to complete Google login..."
+        });
+        
+        // Force a page refresh
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } else {
+        // For other errors, show the error message
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: errorMessage
+        });
+        setLoading(false);
+      }
     }
   };
 

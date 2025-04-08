@@ -1,139 +1,154 @@
-// src/modules/movies/movies.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movie } from './entities/movie.entity';
+import { Review } from '../reviews/entities/review.entity';
 import { TMDBService } from './services/tmdb.service';
-import {
-  TMDBMovie,
-  TMDBMovieDetails,
-  TMDBCredits,
-  TMDBVideo,
-} from './types/tmdb.types';
+import { TMDBResponse, TMDBMovieDetails } from './types/tmdb.types';
+import { BaseService } from '../../common/services/base.service';
+import { CacheService } from '../../common/services/cache.service';
+import { CacheKeyFactory } from '../../common/factories/cache-key.factory';
+import { EntityCacheTTL } from '../../common/constants/cache-ttl.constants';
 
 @Injectable()
-export class MoviesService {
+export class MoviesService extends BaseService<Movie> {
+  protected readonly logger = new Logger(MoviesService.name);
+
   constructor(
     @InjectRepository(Movie)
-    private moviesRepository: Repository<Movie>,
-    private tmdbService: TMDBService,
-  ) {}
-
-  async findAll(): Promise<Movie[]> {
-    return this.moviesRepository.find();
+    protected readonly moviesRepository: Repository<Movie>,
+    @InjectRepository(Review)
+    private readonly reviewRepository: Repository<Review>,
+    public readonly tmdbService: TMDBService,
+    protected readonly cacheService: CacheService,
+    protected readonly cacheKeyFactory: CacheKeyFactory,
+  ) {
+    super(moviesRepository, cacheService, 'movie', cacheKeyFactory);
   }
-
-  async findOne(id: string): Promise<Movie> {
-    const movie = await this.moviesRepository.findOne({
-      where: { id },
-      relations: ['reviews'],
-    });
-    if (!movie) {
-      throw new NotFoundException(`Movie with ID ${id} not found`);
+  async getNowPlayingMovies(page = 1): Promise<TMDBResponse> {
+    try {
+      const cacheKey = this.cacheKeyFactory.movie.nowPlaying(page);
+      const response = await this.cacheService.getOrFetch<TMDBResponse>(
+        cacheKey,
+        () => this.tmdbService.getNowPlayingMovies(page),
+        EntityCacheTTL.MOVIE_NOW_PLAYING
+      );
+  
+      return {
+        results: response.results || [],
+        page: response.page || 1,
+        total_pages: response.total_pages || 0,
+        total_results: response.total_results || 0
+      };
+    } catch (error) {
+      this.logger.error(`Error getting now playing movies: ${error.message}`, error.stack);
+      return {
+        results: [],
+        page: 1,
+        total_pages: 0,
+        total_results: 0
+      };
     }
-    return movie;
+  }
+  async getPopularMovies(page = 1): Promise<TMDBResponse> {
+    try {
+      const cacheKey = this.cacheKeyFactory.movie.popular(page);
+      const response = await this.cacheService.getOrFetch<TMDBResponse>(
+        cacheKey,
+        () => this.tmdbService.getPopularMovies(page),
+        EntityCacheTTL.MOVIE_POPULAR
+      );
+
+      return {
+        results: response.results || [],
+        page: response.page || 1,
+        total_pages: response.total_pages || 0,
+        total_results: response.total_results || 0
+      };
+    } catch (error) {
+      this.logger.error(`Error getting popular movies: ${error.message}`, error.stack);
+      return {
+        results: [],
+        page: 1,
+        total_pages: 0,
+        total_results: 0
+      };
+    }
   }
 
   async findByTmdbId(tmdbId: number): Promise<Movie | null> {
-    return this.moviesRepository.findOne({
-      where: { tmdbId },
-      relations: ['reviews'],
-    });
+    const cacheKey = this.cacheKeyFactory.movie.byTmdbId(tmdbId);
+    return this.cacheService.getOrFetch(
+      cacheKey,
+      async () => {
+        try {
+          return await this.moviesRepository.findOne({
+            where: { tmdbId },
+            relations: ['reviews'],
+          });
+        } catch (error) {
+          this.logger.error(`Error finding movie by TMDB ID ${tmdbId}: ${error.message}`, error.stack);
+          return null;
+        }
+      },
+      EntityCacheTTL.MOVIE_DETAILS
+    );
   }
 
   async createOrUpdateFromTMDB(tmdbMovie: TMDBMovieDetails): Promise<Movie> {
-    let movie = await this.findByTmdbId(tmdbMovie.id);
-
-    if (!movie) {
-      movie = this.moviesRepository.create({});
+    try {
+      let movie = await this.findByTmdbId(tmdbMovie.id);
+    
+      const movieData: Partial<Movie> = {
+        tmdbId: tmdbMovie.id,
+        title: tmdbMovie.title,
+        originalTitle: tmdbMovie.original_title || tmdbMovie.title,
+        overview: tmdbMovie.overview || '',
+        releaseYear: new Date(tmdbMovie.release_date).getFullYear(),
+        posterPath: tmdbMovie.poster_path || undefined,
+        backdropPath: tmdbMovie.backdrop_path || undefined,
+        genres: tmdbMovie.genres.map(g => g.name),
+        runtime: tmdbMovie.runtime || undefined,
+        languages: tmdbMovie.spoken_languages?.map(l => l.iso_639_1) || [],
+        isAdult: tmdbMovie.adult,
+        voteAverage: tmdbMovie.vote_average,
+        voteCount: tmdbMovie.vote_count,
+        isPopular: (tmdbMovie.popularity ?? 0) > 20
+      };
+    
+      if (!movie) {
+        movie = this.moviesRepository.create(movieData);
+      } else {
+        Object.assign(movie, movieData);
+      }
+    
+      const saved = await this.moviesRepository.save(movie);
+      
+      await Promise.all([
+        this.clearEntityCache(saved.id),
+        this.cacheService.invalidate(this.cacheKeyFactory.movie.byTmdbId(tmdbMovie.id))
+      ]);
+      
+      return saved;
+    } catch (error) {
+      this.logger.error(`Error creating/updating movie from TMDB: ${error.message}`, error.stack);
+      throw error;
     }
-
-    movie.tmdbId = tmdbMovie.id;
-    movie.title = tmdbMovie.title;
-    movie.originalTitle = tmdbMovie.original_title;
-    movie.overview = tmdbMovie.overview || '';
-    movie.releaseYear = new Date(tmdbMovie.release_date).getFullYear();
-    movie.posterPath = tmdbMovie.poster_path || undefined;
-    movie.backdropPath = tmdbMovie.backdrop_path || undefined;
-    movie.genres = tmdbMovie.genres.map(g => g.name);
-    movie.runtime = tmdbMovie.runtime || 0;
-    movie.languages = tmdbMovie.original_language ? [tmdbMovie.original_language] : [];
-    movie.isAdult = tmdbMovie.adult;
-
-    return this.moviesRepository.save(movie);
   }
 
-  async searchMovies(query: string, page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.searchMovies(query, page);
-    return response.results;
-  }
-
-  async getMovieDetails(tmdbId: number): Promise<Movie> {
-    const tmdbMovie = await this.tmdbService.getMovie(tmdbId);
-    return this.createOrUpdateFromTMDB(tmdbMovie);
-  }
-
-  async getMovieCredits(tmdbId: number): Promise<TMDBCredits> {
-    return this.tmdbService.getMovieCredits(tmdbId);
-  }
-
-  async getSimilarMovies(tmdbId: number, page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getSimilarMovies(tmdbId, page);
-    return response.results;
-  }
-
-  async getPopularMovies(page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getPopularMovies(page);
-    return response.results;
-  }
-
-  async getTopRatedMovies(page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getTopRatedMovies(page);
-    return response.results;
-  }
-
-  async getNowPlayingMovies(page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getNowPlayingMovies(page);
-    return response.results;
-  }
-
-  async getUpcomingMovies(page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getUpcomingMovies(page);
-    return response.results;
-  }
-
-  async getMovieVideos(tmdbId: number): Promise<TMDBVideo[]> {
-    const response = await this.tmdbService.getMovieVideos(tmdbId);
-    return response.results;
-  }
-
-  async getTrendingMovies(timeWindow: 'day' | 'week', page = 1): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.getTrendingMovies(timeWindow, page);
-    return response.results;
-  }
-
-  async getRandomPopularMovie(): Promise<TMDBMovie> {
-    const movies = await this.getPopularMovies(1);
-    const randomIndex = Math.floor(Math.random() * movies.length);
-    return movies[randomIndex];
-  }
-
-  async discoverMovies(options: {
-    year?: number;
-    genre?: number;
-    sortBy?: string;
-    page?: number;
-  }): Promise<TMDBMovie[]> {
-    const response = await this.tmdbService.discoverMovies(options);
-    return response.results;
-  }
-
-  // Image URL helpers
-  getPosterUrl(path: string | null | undefined): string | undefined {
-    return path ? this.tmdbService.getImageUrl(path) : undefined;
-  }
-
-  getBackdropUrl(path: string | null | undefined): string | undefined {
-    return path ? this.tmdbService.getImageUrl(path) : undefined;
+  async refreshMovieFromTMDB(tmdbId: number): Promise<Movie> {
+    try {
+      await this.tmdbService.invalidateMovieCache(tmdbId);
+      const tmdbMovie = await this.tmdbService.getMovie(tmdbId);
+      
+      if (!tmdbMovie) {
+        throw new NotFoundException(`Movie with TMDB ID ${tmdbId} not found`);
+      }
+      
+      return this.createOrUpdateFromTMDB(tmdbMovie);
+    } catch (error) {
+      this.logger.error(`Error refreshing movie from TMDB: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 }

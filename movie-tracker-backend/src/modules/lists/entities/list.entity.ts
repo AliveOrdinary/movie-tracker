@@ -1,123 +1,126 @@
 // src/modules/lists/entities/list.entity.ts
 import {
-    Entity,
-    Column,
-    PrimaryGeneratedColumn,
-    CreateDateColumn,
-    UpdateDateColumn,
-    ManyToOne,
-    OneToMany,
-    JoinColumn,
-    Index
-  } from 'typeorm';
-import { ObjectType, Field, ID, Int, registerEnumType } from '@nestjs/graphql';
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
+import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { User } from '../../users/entities/user.entity';
 import { ListItem } from './list-item.entity';
-import { ListCollaborator, CollaboratorPermission } from './list-collaborator.entity';
-  
-  export enum ListType {
-    STANDARD = 'standard',
-    CUSTOM = 'custom'
-  }
-  
-  export enum ListPrivacy {
-    PUBLIC = 'public',
-    PRIVATE = 'private',
-    FOLLOWING = 'following'
-  }
-  
-  registerEnumType(ListType, {
-    name: 'ListType',
-    description: 'Type of list (standard or custom)',
-  });
-  
-  registerEnumType(ListPrivacy, {
-    name: 'ListPrivacy',
-    description: 'Privacy level of the list',
-  });
-  
-  @ObjectType()
-  @Entity('lists')
-  @Index(['ownerId', 'type'])
-  @Index(['privacy', 'createdAt'])
-  export class List {
-    @Field(() => ID)
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
-  
-    @Field()
-    @Column()
-    name: string;
-  
-    @Field({ nullable: true })
-    @Column({ type: 'text', nullable: true })
-    description?: string;
-  
-    @Field({ nullable: true })
-    @Column({ nullable: true })
-    thumbnail?: string;
-  
-    @Field(() => ListType)
-    @Column({
-      type: 'enum',
-      enum: ListType,
-      default: ListType.CUSTOM
-    })
-    type: ListType;
-  
-    @Field(() => ListPrivacy)
-    @Column({
-      type: 'enum',
-      enum: ListPrivacy,
-      default: ListPrivacy.PRIVATE
-    })
-    privacy: ListPrivacy;
-  
-    @Field({ nullable: true })
-    @Column({ nullable: true })
-    category?: string;
-  
-    @Field(() => User)
-    @ManyToOne(() => User, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'owner_id' })
-    owner: User;
-  
-    @Column()
-    ownerId: string;
-  
-    @Field(() => Number, { nullable: true })
-    @Column({ nullable: true })
-    maxEntries?: number;
-  
-    @Field(() => Number)
-    @Column({ default: 0 })
-    favoriteCount: number;
-  
-    @Field(() => [ListItem])
-    @OneToMany(() => ListItem, item => item.list)
-    items: ListItem[];
-  
-    @Field(() => [ListCollaborator])
-    @OneToMany(() => ListCollaborator, collaborator => collaborator.list)
-    collaborators: ListCollaborator[];
-  
-    @Field()
-    @CreateDateColumn()
-    createdAt: Date;
-  
-    @Field()
-    @UpdateDateColumn()
-    updatedAt: Date;
+import { ListCollaborator } from './list-collaborator.entity';
+import { ListType, ListPrivacy, CollaboratorPermission } from '../../../common/enums';
 
-    @Field(() => Int)
-    itemCount: number;
+@ObjectType()
+@Entity('lists')
+export class List {
+  @Field(() => ID)
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Field(() => Boolean)
-    isFavorited: boolean;
+  @Field()
+  @Column()
+  name: string;
 
-    @Field(() => Boolean)
-    isCollaborator: boolean;
+  @Field({ nullable: true })
+  @Column({ type: 'text', nullable: true })
+  description?: string;
 
-    @Field(() => [CollaboratorPermission], { nullable: true })
-    userPermissions?: CollaboratorPermission[];
-  }
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  thumbnail?: string;
+
+  @Field(() => ListType)
+  @Column({
+    type: 'enum',
+    enum: ListType,
+    default: ListType.CUSTOM,
+    name: 'type' // Keep DB column name, but use uppercase TypeScript enum
+  })
+  type: ListType;
+
+  @Field(() => ListPrivacy)
+  @Column({ 
+    type: 'enum',
+    enum: ListPrivacy,
+    default: ListPrivacy.PRIVATE,
+    name: 'privacy' // Keep DB column name, but use uppercase TypeScript enum
+  }) 
+  privacy: ListPrivacy;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  category?: string;
+
+  @Field(() => User)
+  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'owner_id' })
+  owner: User;
+
+  @Column({ name: 'owner_id', nullable: false })
+  @Field()
+  owner_id: string;
+
+  @Field(() => Number, { nullable: true })
+  @Column({ nullable: true, name: 'max_entries' })
+  maxEntries?: number;
+
+  @Field(() => Number)
+  @Column({ default: 0, name: 'favorite_count' }) 
+  favoriteCount: number;
+
+  @Field(() => Boolean)
+  @Column({ default: false, name: 'is_featured' }) 
+  isFeatured: boolean;
+
+  @Field(() => [ListItem], { nullable: false, defaultValue: [] })
+  @OneToMany(() => ListItem, item => item.list)
+  items: ListItem[];
+
+  @Field(() => [ListCollaborator], { nullable: false, defaultValue: [] })
+  @OneToMany(() => ListCollaborator, collaborator => collaborator.list)
+  collaborators: ListCollaborator[];
+
+  @Field()
+  @CreateDateColumn({ name: 'created_at' }) 
+  createdAt: Date;
+
+  @Field()
+  @UpdateDateColumn({ name: 'updated_at' }) 
+  updatedAt: Date;
+
+  // Virtual fields for GraphQL only
+  @Field(() => Int)
+  itemCount: number;
+
+  @Field(() => Boolean)
+  isFavorited: boolean;
+
+  @Field(() => Boolean)
+  isCollaborator: boolean;
+
+  @Field(() => [CollaboratorPermission], { nullable: true })
+  userPermissions?: CollaboratorPermission[];
+
+  // Standardize property names to match camelCase pattern
+  // while keeping database columns in snake_case
+  @Field(() => Boolean, { nullable: true })
+  @Column({ name: 'is_flagged', default: false }) 
+  isFlagged: boolean;
+
+  @Column({ nullable: true, type: 'text', name: 'moderation_reason' })
+  moderationReason?: string;
+
+  @Column({ nullable: true, name: 'moderated_at' })
+  moderatedAt?: Date;
+
+  @Column({ default: false, name: 'is_rejected' }) 
+  isRejected: boolean;
+
+  @Column({ default: false, name: 'is_auto_moderated' }) 
+  isAutoModerated: boolean;
+}

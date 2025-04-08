@@ -2,7 +2,8 @@
 import { InputType, Field } from '@nestjs/graphql';
 import { IsEnum, IsUUID, IsString, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ModerationAction } from '../entities/moderation-log.entity';
+import { ModerationAction } from 'src/common/enums';
+
 
 @InputType()
 export class CreateModerationLogInput {

@@ -1,5 +1,5 @@
 // src/modules/users/entities/user.entity.ts
-import { ObjectType, Field, ID, Int, registerEnumType } from '@nestjs/graphql';
+import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import {
   Entity,
   Column,
@@ -8,13 +8,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { UserRole } from '../../../common/enums/roles.enum';
-import { ProfileVisibility } from '../../../common/enums/profile-visibility.enum';
-import {
-  WatchlistDisplayMode,
-  ActivityFeedFilter,
-  ReviewsSortOrder,
-} from '../../../common/enums/profile-settings.enum';
+import { UserRole, ProfileVisibility, WatchlistDisplayMode, ActivityFeedFilter, ReviewsSortOrder } from '../../../common/enums';
 import { Review } from '../../reviews/entities/review.entity';
 import { WatchHistory } from '../../watch-history/entities/watch-history.entity';
 
@@ -44,7 +38,7 @@ export class User {
   id: string;
 
   @Field()
-  @Column({ unique: true })
+  @Column({ unique: true, name: 'firebase_uid' }) 
   firebaseUid: string;
 
   @Field()
@@ -56,12 +50,13 @@ export class User {
   email: string;
 
   @Field(() => [UserRole])
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: UserRole,
     array: true,
     default: [UserRole.USER],
-  })
+    name: 'roles' 
+  }) 
   roles: UserRole[];
 
   // Reviews Relationship
@@ -76,44 +71,45 @@ export class User {
 
   // Profile Settings
   @Field(() => ProfileVisibility)
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: ProfileVisibility,
     default: ProfileVisibility.PUBLIC,
-  })
+    name: 'profile_visibility' 
+  }) 
   profileVisibility: ProfileVisibility;
 
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'show_online_status' }) 
   showOnlineStatus: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'show_activity' }) 
   showActivity: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'allow_friend_requests' }) 
   allowFriendRequests: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'show_watchlist' }) 
   showWatchlist: boolean;
 
   // Notification Settings
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'email_notifications' }) 
   emailNotifications: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'review_notifications' }) 
   reviewNotifications: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'friend_request_notifications' }) 
   friendRequestNotifications: boolean;
 
   @Field(() => Boolean)
-  @Column({ default: true })
+  @Column({ default: true, name: 'watchlist_notifications' }) 
   watchlistNotifications: boolean;
 
   // Profile Information
@@ -130,94 +126,97 @@ export class User {
   website?: string;
 
   @Field(() => [String], { nullable: true })
-  @Column('text', { array: true, nullable: true })
+  @Column('text', { array: true, nullable: true, name: 'favorite_genres' })
   favoriteGenres?: string[];
 
   @Field(() => SocialLinks, { nullable: true })
-  @Column('jsonb', { default: {} })
+  @Column('jsonb', { default: {}, name: 'social_links' })
   socialLinks: Record<string, string>;
 
   // Display Preferences
   @Field(() => WatchlistDisplayMode)
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: WatchlistDisplayMode,
     default: WatchlistDisplayMode.GRID,
-  })
+    name: 'watchlist_display_mode' 
+  }) 
   watchlistDisplayMode: WatchlistDisplayMode;
 
   @Field(() => ActivityFeedFilter)
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: ActivityFeedFilter,
     default: ActivityFeedFilter.ALL,
-  })
+    name: 'activity_feed_filter' 
+  }) 
   activityFeedFilter: ActivityFeedFilter;
 
   @Field(() => ReviewsSortOrder)
-  @Column({
+  @Column({ 
     type: 'enum',
     enum: ReviewsSortOrder,
     default: ReviewsSortOrder.LATEST,
-  })
+    name: 'reviews_sort_order' 
+  }) 
   reviewsSortOrder: ReviewsSortOrder;
 
   // Account Status
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'email_verified' }) 
   emailVerified: boolean;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'avatar_url' })
   avatarUrl?: string;
 
   // Moderation Fields
   @Field(() => Boolean)
-  @Column({ default: false })
+  @Column({ default: false, name: 'is_banned' }) 
   isBanned: boolean;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'ban_reason' })
   banReason?: string;
 
   @Field(() => Date, { nullable: true })
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'banned_at' })
   bannedAt?: Date;
 
   @Field(() => Date, { nullable: true })
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'suspended_until' })
   suspendedUntil?: Date;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'suspension_reason' })
   suspensionReason?: string;
 
   @Field(() => Int)
-  @Column({ default: 0 })
+  @Column({ default: 0, name: 'warning_count' }) 
   warningCount: number;
 
   @Field({ nullable: true })
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'last_warning_reason' })
   lastWarningReason?: string;
 
   @Field(() => Date, { nullable: true })
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_warning_at' })
   lastWarningAt?: Date;
 
   // Timestamps
   @Field(() => Date)
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 
   @Field(() => Date)
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
 
   @Field(() => Date, { nullable: true })
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_login_at' })
   lastLoginAt?: Date;
 
   @Field(() => Date, { nullable: true })
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_activity_at' })
   lastActivityAt?: Date;
 }

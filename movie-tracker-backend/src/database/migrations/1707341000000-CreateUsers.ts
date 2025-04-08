@@ -56,6 +56,7 @@ export class CreateUsers1707341000000 implements MigrationInterface {
             name: 'createdAt',  // Changed from created_at to match entity
             type: 'timestamp',
             default: 'CURRENT_TIMESTAMP',
+            isNullable: false,
           },
           {
             name: 'updatedAt',  // Changed from updated_at to match entity

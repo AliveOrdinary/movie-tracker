@@ -1,20 +1,15 @@
 // src/auth/guards/rate-limit.guard.ts
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext, Inject } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { 
-  ThrottlerGuard, 
-  ThrottlerException,
-  ThrottlerModuleOptions,
-  ThrottlerLimitDetail,
-  ThrottlerStorage,
-} from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
+import { getOptionsToken, getStorageToken } from '@nestjs/throttler';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class GqlThrottlerGuard extends ThrottlerGuard {
   constructor(
-    protected readonly options: ThrottlerModuleOptions,
-    protected readonly storageService: ThrottlerStorage,
+    @Inject(getOptionsToken()) protected readonly options: any,
+    @Inject(getStorageToken()) protected readonly storageService: any,
     protected readonly reflector: Reflector,
   ) {
     super(options, storageService, reflector);
@@ -26,12 +21,8 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
     return { req: ctx.req, res: ctx.res };
   }
 
-  protected async throwThrottlingException(
-    context: ExecutionContext,
-    throttlerLimitDetail: ThrottlerLimitDetail,
-  ): Promise<void> {
-    throw new ThrottlerException(
-      `Too Many Requests - Available in ${throttlerLimitDetail.timeToExpire}s`
-    );
+  protected throwThrottlingException(context: ExecutionContext, throttlerLimitDetail: any): Promise<void> {
+    throw new ThrottlerException('Too Many Requests');
+    return Promise.resolve();
   }
 }

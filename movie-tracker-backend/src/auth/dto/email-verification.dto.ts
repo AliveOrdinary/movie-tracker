@@ -3,10 +3,10 @@ import { InputType, Field, ObjectType } from '@nestjs/graphql';
 import { IsString, IsEmail } from 'class-validator';
 
 @InputType()
-export class SendEmailVerificationInput {
+export class EmailVerificationInput {
   @Field()
-  @IsEmail()
-  email: string;
+  @IsString()
+  code: string;
 }
 
 @ObjectType()

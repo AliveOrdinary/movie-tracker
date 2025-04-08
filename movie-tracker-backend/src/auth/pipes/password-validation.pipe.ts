@@ -4,23 +4,19 @@ import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from
 @Injectable()
 export class PasswordValidationPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata) {
+    // Only process request body data
     if (metadata.type !== 'body') return value;
 
-    if (value.newPassword) {
-      if (value.currentPassword && value.newPassword === value.currentPassword) {
-        throw new BadRequestException('New password must be different from current password');
-      }
+    // Skip if no new password in the request
+    if (!value.newPassword) return value;
 
-      if (value.newPassword.length < 8) {
-        throw new BadRequestException('Password must be at least 8 characters long');
-      }
-
-      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9!@#$%^&*])/.test(value.newPassword)) {
-        throw new BadRequestException(
-          'Password must contain at least one uppercase letter, one lowercase letter, and one number or special character'
-        );
-      }
+    // If changing password, check that new password is different from current
+    if (value.currentPassword && value.newPassword === value.currentPassword) {
+      throw new BadRequestException('New password must be different from current password');
     }
+
+    // Password regex validation should be handled by class-validator in the DTO
+    // This pipe is mainly for custom validations like comparing old vs new password
 
     return value;
   }

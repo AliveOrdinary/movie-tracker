@@ -1,47 +1,114 @@
 // src/types/movie.ts
-export interface TMDBMovie {
+
+export interface Movie {
+  id: string;
+  tmdbId: number;
+  title: string;
+  originalTitle: string;
+  overview: string;
+  releaseYear: number;
+  posterPath: string | null;
+  posterUrl: string | null;
+  backdropPath: string | null;
+  backdropUrl: string | null;
+  voteAverage?: number;
+  voteCount?: number;
+  genres: string[];
+  runtime?: number | null;
+  languages: string[];
+  isAdult: boolean;
+  popularity?: number;
+  isInWatchlist?: boolean;
+  userRating?: number;
+  isPopular?: boolean;
+  reviews?: {
+    id: string;
+    rating: number;
+    content: string;
+  }[];
+}
+
+// Original TMDB API format (snake_case)
+export interface TMDBMovieOriginal {
   id: number;
   title: string;
   original_title: string;
   overview: string;
+  release_date: string;
   poster_path: string | null;
   backdrop_path: string | null;
   vote_average: number;
   vote_count: number;
-  release_date: string;
   genre_ids: number[];
   adult: boolean;
   original_language: string;
+  popularity: number;
 }
 
-// Genre mapping (you can expand this based on TMDB genres)
-export const GENRE_MAP: Record<number, string> = {
-  28: "Action",
-  12: "Adventure",
-  16: "Animation",
-  35: "Comedy",
-  80: "Crime",
-  99: "Documentary",
-  18: "Drama",
-  10751: "Family",
-  14: "Fantasy",
-  36: "History",
-  27: "Horror",
-  10402: "Music",
-  9648: "Mystery",
-  10749: "Romance",
-  878: "Science Fiction",
-  10770: "TV Movie",
-  53: "Thriller",
-  10752: "War",
-  37: "Western"
-};
-
-// Helper functions
-export function formatReleaseYear(release_date: string): number {
-  return new Date(release_date).getFullYear();
+// Our backend GraphQL format (camelCase)
+export interface TMDBMovie {
+  id: string;
+  tmdbId?: number;
+  title: string;
+  originalTitle: string;
+  overview: string;
+  releaseYear: number;
+  posterPath: string | null;
+  backdropPath: string | null;
+  voteAverage: number;
+  voteCount: number;
+  genres: string[];
+  isAdult: boolean;
+  languages: string[];
+  isPopular: boolean;
 }
 
-export function formatGenres(genre_ids: number[]): string[] {
-  return genre_ids.map(id => GENRE_MAP[id] || 'Unknown Genre');
+export interface MovieWatchProviders {
+  id: number;
+  results: {
+    [countryCode: string]: {
+      link: string;
+      rent?: {
+        provider_id: number;
+        provider_name: string;
+        logo_path: string;
+      }[];
+      buy?: {
+        provider_id: number;
+        provider_name: string;
+        logo_path: string;
+      }[];
+      flatrate?: {
+        provider_id: number;
+        provider_name: string;
+        logo_path: string;
+      }[];
+    };
+  };
+}
+
+export interface MovieCredits {
+  cast: {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+    order: number;
+  }[];
+  crew: {
+    id: number;
+    name: string;
+    job: string;
+    department: string;
+    profile_path: string | null;
+  }[];
+}
+
+export interface MovieVideo {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
 }

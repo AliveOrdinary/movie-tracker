@@ -1,7 +1,7 @@
 //src/modules/users/admin/admin.resolver.ts
 import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { UserRole } from '../../../common/enums/roles.enum';
+import { UserRole } from 'src/common/enums';  
 import { User } from '../entities/user.entity';
 import { UsersService } from '../users.service';
 

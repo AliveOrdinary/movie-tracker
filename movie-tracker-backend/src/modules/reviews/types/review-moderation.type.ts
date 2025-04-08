@@ -1,16 +1,6 @@
 // src/modules/reviews/types/review-moderation.type.ts
-import { ObjectType, Field, registerEnumType } from '@nestjs/graphql';
-
-export enum ModerationAction {
-  APPROVE = 'APPROVE',
-  REJECT = 'REJECT',
-  FLAG = 'FLAG'
-}
-
-registerEnumType(ModerationAction, {
-  name: 'ModerationAction',
-  description: 'Available moderation actions for reviews',
-});
+import { ObjectType, Field } from '@nestjs/graphql';
+import { ModerationAction } from 'src/common/enums';
 
 @ObjectType()
 export class ModerationResult {

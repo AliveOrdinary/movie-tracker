@@ -1,5 +1,4 @@
-// src/modules/movies/types/tmdb.types.ts
-import { ObjectType, Field, Int, Float } from '@nestjs/graphql';
+import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 
 @ObjectType()
 export class TMDBMovie {
@@ -12,14 +11,14 @@ export class TMDBMovie {
   @Field()
   original_title: string;
 
+  @Field()
+  overview: string;
+
   @Field({ nullable: true })
-  overview?: string;
+  poster_path?: string;
 
-  @Field(() => String, { nullable: true })
-  poster_path?: string | null;
-
-  @Field(() => String, { nullable: true })
-  backdrop_path?: string | null;
+  @Field({ nullable: true })
+  backdrop_path?: string;
 
   @Field(() => Float)
   vote_average: number;
@@ -27,17 +26,85 @@ export class TMDBMovie {
   @Field(() => Int)
   vote_count: number;
 
-  @Field(() => String)
+  @Field()
   release_date: string;
 
   @Field(() => [Int])
   genre_ids: number[];
 
-  @Field(() => Boolean)
+  @Field()
   adult: boolean;
 
-  @Field(() => String, { nullable: true })
-  original_language?: string;
+  @Field()
+  original_language: string;
+
+  @Field(() => Float)
+  popularity: number;
+}
+
+@ObjectType()
+export class TMDBResponse {
+  @Field(() => Int)
+  page: number;
+
+  @Field(() => [TMDBMovie])
+  results: TMDBMovie[];
+
+  @Field(() => Int)
+  total_pages: number;
+
+  @Field(() => Int)
+  total_results: number;
+}
+
+@ObjectType()
+export class TMDBMovieDetails extends TMDBMovie {
+  @Field(() => Int, { nullable: true })
+  runtime?: number;
+
+  @Field(() => [TMDBGenre])
+  genres: TMDBGenre[];
+
+  @Field(() => [TMDBLanguage])
+  spoken_languages: TMDBLanguage[];
+}
+
+@ObjectType()
+export class TMDBWatchProvider {
+  @Field()
+  provider_id: number;
+
+  @Field()
+  provider_name: string;
+
+  @Field()
+  logo_path: string;
+}
+
+@ObjectType()
+export class CountryWatchProviders {
+  @Field(() => [TMDBWatchProvider], { nullable: true })
+  rent?: TMDBWatchProvider[];
+
+  @Field(() => [TMDBWatchProvider], { nullable: true })
+  buy?: TMDBWatchProvider[];
+
+  @Field(() => [TMDBWatchProvider], { nullable: true })
+  flatrate?: TMDBWatchProvider[];
+
+  @Field()
+  link: string;
+}
+
+@ObjectType()
+export class TMDBWatchProvidersResponse {
+  @Field(() => Int)
+  id: number;
+
+  @Field(() => [CountryWatchProviders])
+  results: {
+    [countryCode: string]: CountryWatchProviders;
+  };
 }
 
 @ObjectType()
@@ -50,24 +117,21 @@ export class TMDBGenre {
 }
 
 @ObjectType()
-export class TMDBMovieDetails extends TMDBMovie {
-  @Field(() => [TMDBGenre])
-  genres: TMDBGenre[];
+export class TMDBLanguage {
+  @Field()
+  iso_639_1: string;
 
-  @Field(() => Int, { nullable: true })
-  runtime?: number;
+  @Field()
+  name: string;
+}
 
-  @Field(() => String, { nullable: true })
-  tagline?: string;
+@ObjectType()
+export class TMDBCredits {
+  @Field(() => [TMDBCast])
+  cast: TMDBCast[];
 
-  @Field(() => Float, { nullable: true })
-  budget?: number;
-
-  @Field(() => Float, { nullable: true })
-  revenue?: number;
-
-  @Field(() => String, { nullable: true })
-  status?: string;
+  @Field(() => [TMDBCrew])
+  crew: TMDBCrew[];
 }
 
 @ObjectType()
@@ -78,14 +142,14 @@ export class TMDBCast {
   @Field()
   name: string;
 
-  @Field(() => String, { nullable: true })
+  @Field({ nullable: true })
   character?: string;
-
-  @Field(() => String, { nullable: true })
-  profile_path?: string;
 
   @Field(() => Int)
   order: number;
+
+  @Field({ nullable: true })
+  profile_path?: string;
 }
 
 @ObjectType()
@@ -97,22 +161,19 @@ export class TMDBCrew {
   name: string;
 
   @Field()
-  job: string;
-
-  @Field()
   department: string;
 
-  @Field(() => String, { nullable: true })
+  @Field()
+  job: string;
+
+  @Field({ nullable: true })
   profile_path?: string;
 }
 
 @ObjectType()
-export class TMDBCredits {
-  @Field(() => [TMDBCast])
-  cast: TMDBCast[];
-
-  @Field(() => [TMDBCrew])
-  crew: TMDBCrew[];
+export class TMDBVideoResponse {
+  @Field(() => [TMDBVideo])
+  results: TMDBVideo[];
 }
 
 @ObjectType()
@@ -132,36 +193,35 @@ export class TMDBVideo {
   @Field()
   type: string;
 
-  @Field(() => Boolean)
+  @Field()
   official: boolean;
 }
 
 @ObjectType()
-export class TMDBVideoResponse {
-  @Field(() => [TMDBVideo])
-  results: TMDBVideo[];
+export class TMDBImageConfiguration {
+  @Field()
+  secure_base_url: string;
+
+  @Field(() => [String])
+  poster_sizes: string[];
+
+  @Field(() => [String])
+  backdrop_sizes: string[];
 }
 
-export interface TMDBConfiguration {
-  images: {
-    base_url: string;
-    secure_base_url: string;
-    backdrop_sizes: string[];
-    logo_sizes: string[];
-    poster_sizes: string[];
-    profile_sizes: string[];
-    still_sizes: string[];
-  };
+@ObjectType()
+export class TMDBConfiguration {
+  @Field(() => TMDBImageConfiguration)
+  images: TMDBImageConfiguration;
+}
+
+@ObjectType()
+export class TMDBGenresResponse {
+  @Field(() => [TMDBGenre])
+  genres: TMDBGenre[];
 }
 
 export interface TMDBError {
   status_message: string;
   status_code: number;
-}
-
-export interface TMDBResponse {
-  page: number;
-  results: TMDBMovie[];
-  total_pages: number;
-  total_results: number;
 }

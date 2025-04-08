@@ -1,6 +1,6 @@
 // src/modules/lists/dto/update-list.input.ts
 import { InputType, Field, ID } from '@nestjs/graphql';
-import { ListPrivacy } from '../entities/list.entity';
+import { ListPrivacy } from 'src/common/enums';
 import { IsString, IsEnum, IsOptional, MaxLength, IsUUID } from 'class-validator';
 
 @InputType()

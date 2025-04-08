@@ -1,5 +1,5 @@
 // src/modules/lists/dto/add-list-item.input.ts
-import { InputType, Field, ID } from '@nestjs/graphql';
+import { InputType, Field, ID, Int } from '@nestjs/graphql';
 import { IsUUID, IsNumber, IsOptional, Min } from 'class-validator';
 
 @InputType()
@@ -8,9 +8,9 @@ export class AddListItemInput {
   @IsUUID()
   listId: string;
 
-  @Field(() => Number)
+  @Field(() => Int)
   @IsNumber()
-  movieId: number;
+  tmdbId: number; // We're using TMDB ID (number) for input, but will resolve to internal UUID in the service
 
   @Field(() => Number, { nullable: true })
   @IsNumber()

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { auth } from '@/lib/firebase/config';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,20 +22,36 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, LogOut, User, BookMarked, Heart, Settings, Sun, Moon } from 'lucide-react';
+import { Menu, LogOut, User, Heart, Settings, Sun, Moon, List, Clock, MessageSquare } from 'lucide-react';
+import { LoadingSpinner } from './ui/LoadingSpinner';
 
 export function Header() {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, isAuthenticated } = useAuth();
   const { theme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
+  useEffect(() => {
+    console.log('Auth state in header:', {
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        roles: user.roles
+      } : null, 
+      isAuthenticated,
+      loading,
+      firebaseLoggedIn: !!auth.currentUser
+    });
+  }, [user, loading, isAuthenticated])
+
   const publicNavigation = [
     { name: 'Movies', href: '/movies' },
-    { name: 'TV Shows', href: '/tv' }
+    { name: 'Reviews', href: '/reviews' }
   ];
 
   const authNavigation = [
-    { name: 'Watchlist', href: '/watchlist' }
+    { name: 'Lists', href: '/lists' },
+    { name: 'Watch History', href: '/watch-history' }
   ];
 
   const allNavigation = [
@@ -44,7 +61,10 @@ export function Header() {
 
   const userNavigation = [
     { name: 'Profile', href: '/profile', icon: User },
-    { name: 'Watchlist', href: '/watchlist', icon: BookMarked },
+    { name: 'Watchlist', href: '/lists/watchlist', icon: Clock },
+    { name: 'Lists', href: '/lists', icon: List },
+    { name: 'Watch History', href: '/watch-history', icon: Clock },
+    { name: 'My Reviews', href: '/profile/reviews', icon: MessageSquare },
     { name: 'Favorites', href: '/favorites', icon: Heart },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
@@ -98,12 +118,12 @@ export function Header() {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.username}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user?.email}
-            </p>
-          </div>
+        <div className="flex flex-col space-y-1">
+        <p className="text-sm font-medium leading-none">{user?.username || 'User'}</p>
+        <p className="text-xs leading-none text-muted-foreground">
+        {user?.email || ''}
+        </p>
+        </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {userNavigation.map((item) => (
@@ -123,8 +143,26 @@ export function Header() {
     </DropdownMenu>
   );
 
+  // If the page is still loading or transitioning, don't render the header yet
   if (loading) {
-    return null; // Or return a loading skeleton
+    return (
+      <header className="border-b">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-8">
+              <Link href="/" className="text-xl font-bold">
+                CineTrack
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-8 w-8 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
   }
 
   return (
@@ -162,7 +200,11 @@ export function Header() {
               )}
               <span className="sr-only">Toggle theme</span>
             </Button>
-            {user ? (
+            {loading ? (
+              <div className="h-8 w-8">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : isAuthenticated && user ? (
               <UserMenu />
             ) : (
               <>

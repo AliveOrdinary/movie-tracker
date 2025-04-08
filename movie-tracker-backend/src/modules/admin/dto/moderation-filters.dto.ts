@@ -20,10 +20,9 @@ export class ModerationFiltersInput {
   @IsDateString()
   endDate?: Date;
 
-  @Field(() => ContentSortField, { nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
-  @IsEnum(ContentSortField)
-  sortBy?: ContentSortField;
+  sortBy?: string;
 
   @Field(() => Boolean, { nullable: true })
   @IsOptional()

@@ -2,7 +2,8 @@
 import { InputType, ObjectType, Field, Int } from '@nestjs/graphql';
 import { IsEnum, IsOptional, IsString, MinLength, IsInt, Min, IsNotEmpty } from 'class-validator';
 import { User } from '../../users/entities/user.entity';
-import { UserRole } from '../../../common/enums/roles.enum';
+import { UserRole } from 'src/common/enums';
+
 
 @InputType()
 export class UpdateUserRoleInput {

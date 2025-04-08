@@ -1,7 +1,7 @@
 //src/modules/users/dto/update-display-preferences.input.ts
 import { InputType, Field } from '@nestjs/graphql';
 import { IsEnum, IsOptional } from 'class-validator';
-import { WatchlistDisplayMode, ActivityFeedFilter, ReviewsSortOrder } from '../../../common/enums/profile-settings.enum';
+import { WatchlistDisplayMode, ActivityFeedFilter, ReviewsSortOrder } from 'src/common/enums';
 
 @InputType()
 export class UpdateDisplayPreferencesInput {

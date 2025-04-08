@@ -1,7 +1,7 @@
 //src/modules/admin/dto/report.dto.ts
 import { InputType, Field, ObjectType, ID } from '@nestjs/graphql';
 import { IsUUID, IsString, IsEnum, IsOptional } from 'class-validator';
-import { ReportStatus, ReportResolution } from '../entities/report.entity';
+import { ReportStatus, ReportResolution } from 'src/common/enums';
 
 @InputType()
 export class CreateReportInput {

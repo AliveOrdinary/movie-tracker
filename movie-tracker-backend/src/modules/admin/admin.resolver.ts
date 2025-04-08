@@ -2,13 +2,15 @@
 import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { ModerationLog, ModerationAction } from './entities/moderation-log.entity';
+import { ModerationLog } from '../moderation/entities/moderation-log.entity';
+import { ModerationAction } from 'src/common/enums';
 import { User } from '../users/entities/user.entity';
-import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth.guard';
+import { AuthGuard } from '../../auth/guards/auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { UserRole } from 'src/common/enums';
+
 import {
   CreateModerationLogInput,
   UpdateModerationLogInput,
@@ -20,7 +22,7 @@ import {
 } from './dto';
 
 @Resolver(() => ModerationLog)
-@UseGuards(FirebaseAuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.MODERATOR)
 export class AdminResolver {
   constructor(private readonly adminService: AdminService) {}

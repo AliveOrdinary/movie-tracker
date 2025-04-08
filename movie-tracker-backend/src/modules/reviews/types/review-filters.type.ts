@@ -1,28 +1,23 @@
 // src/modules/reviews/types/review-filters.type.ts
-import { InputType, Field, Int, registerEnumType } from '@nestjs/graphql';
-import { IsOptional, IsEnum, IsInt, Min, Max } from 'class-validator';
-
-export enum ReviewSortType {
-  RECENT = 'RECENT',
-  RATING = 'RATING',
-  REACTIONS = 'REACTIONS',
-  HELPFUL = 'HELPFUL'
-}
-
-registerEnumType(ReviewSortType, {
-  name: 'ReviewSortType',
-  description: 'Available sorting options for reviews',
-});
+import { InputType, Field, Int } from '@nestjs/graphql';
+import { IsOptional, IsEnum, IsInt, IsBoolean, IsDate, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ReviewsSortOrder, ReviewStatus } from '../../../common/enums';
 
 @InputType()
 export class ReviewFilters {
-  @Field(() => ReviewSortType, { nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
-  @IsEnum(ReviewSortType)
-  sortBy?: ReviewSortType;
+  sortBy?: string;
+
+  @Field(() => ReviewStatus, { nullable: true })
+  @IsOptional()
+  @IsEnum(ReviewStatus)
+  status?: ReviewStatus;
 
   @Field(() => Boolean, { nullable: true })
   @IsOptional()
+  @IsBoolean()
   showSpoilers?: boolean;
 
   @Field(() => Int, { nullable: true })
@@ -39,14 +34,44 @@ export class ReviewFilters {
   @Max(10)
   maxRating?: number;
 
-  @Field(() => Int, { defaultValue: 1 })
+  @Field(() => Date, { nullable: true })
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  startDate?: Date;
+
+  @Field(() => Date, { nullable: true })
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  endDate?: Date;
+
+  @Field(() => Int, { nullable: true, defaultValue: 1 })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  page: number = 1;
+  page?: number = 1;
 
-  @Field(() => Int, { defaultValue: 10 })
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(50)
-  limit: number = 10;
+  limit?: number = 10;
+}
+
+@InputType()
+export class UserReviewFilters extends ReviewFilters {
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  includePrivate?: boolean;
+}
+
+@InputType()
+export class MovieReviewFilters extends ReviewFilters {
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  onlyVerifiedWatches?: boolean;
 }

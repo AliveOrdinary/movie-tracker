@@ -27,18 +27,15 @@ import {
     @JoinColumn({ name: 'list_id' })
     list: List;
   
-    @Column()
-    listId: string;
+    @Column({ name: 'list_id' }) listId: string;
   
     @Field(() => User)
     @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
     user: User;
   
-    @Column()
-    userId: string;
+    @Column({ name: 'user_id' }) userId: string;
   
     @Field()
-    @CreateDateColumn()
-    createdAt: Date;
+    @CreateDateColumn({ name: 'created_at' }) createdAt: Date;
   }

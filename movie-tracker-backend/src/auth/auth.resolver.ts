@@ -1,11 +1,13 @@
 // src/auth/auth.resolver.ts
 import { Resolver, Mutation, Args, Query } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, Inject } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { User } from '../modules/users/entities/user.entity';
-import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
+import { AuthGuard, Public } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { PasswordValidationPipe } from './pipes/password-validation.pipe';
+import { GqlThrottlerGuard } from './guards/rate-limit.guard';
+import { UserRole, ProfileVisibility, WatchlistDisplayMode, ActivityFeedFilter, ReviewsSortOrder } from '../common/enums';
 import {
   InitiatePasswordResetInput,
   ChangePasswordInput,
@@ -19,13 +21,16 @@ import {
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
+  // Removed the normalizeUserEnums function as all enum values are now uppercase in the database
+
   @Query(() => User)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async me(@CurrentUser() user: User): Promise<User> {
     return user;
   }
 
   @Mutation(() => Boolean)
+  @UseGuards(GqlThrottlerGuard)
   async initiatePasswordReset(
     @Args('input') input: InitiatePasswordResetInput,
   ): Promise<boolean> {
@@ -34,6 +39,7 @@ export class AuthResolver {
   }
 
   @Mutation(() => PasswordResetVerificationResult)
+  @UseGuards(GqlThrottlerGuard)
   async verifyPasswordResetCode(
     @Args('code') code: string,
   ): Promise<PasswordResetVerificationResult> {
@@ -45,6 +51,7 @@ export class AuthResolver {
   }
 
   @Mutation(() => Boolean)
+  @UseGuards(GqlThrottlerGuard)
   async resetPassword(
     @Args('input', { type: () => ResetPasswordInput }, PasswordValidationPipe)
     input: ResetPasswordInput,
@@ -54,10 +61,11 @@ export class AuthResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async changePassword(
     @CurrentUser() user: User,
-    @Args('input') input: ChangePasswordInput,
+    @Args('input', { type: () => ChangePasswordInput }, PasswordValidationPipe) 
+    input: ChangePasswordInput,
   ): Promise<boolean> {
     await this.authService.changePassword(
       user,
@@ -68,7 +76,7 @@ export class AuthResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async sendEmailVerification(
     @CurrentUser() user: User,
   ): Promise<boolean> {
@@ -77,7 +85,7 @@ export class AuthResolver {
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async verifyEmail(
     @CurrentUser() user: User,
   ): Promise<boolean> {
@@ -85,14 +93,25 @@ export class AuthResolver {
     return true;
   }
 
+  @Mutation(() => Boolean)
+  @UseGuards(AuthGuard)
+  async checkEmailVerified(
+    @CurrentUser() user: User,
+  ): Promise<boolean> {
+    return this.authService.isEmailVerified(user.firebaseUid);
+  }
+
   @Mutation(() => LoginResponse)
+  @UseGuards(GqlThrottlerGuard)
+  @Public()
   async login(@Args('input') input: LoginInput): Promise<LoginResponse> {
     const user = await this.authService.validateFirebaseUser(input.firebaseUid);
+    
     return { user };
   }
 
   @Mutation(() => Boolean)
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async logout(@CurrentUser() user: User): Promise<boolean> {
     await this.authService.revokeUserSessions(user.firebaseUid);
     return true;

@@ -12,6 +12,7 @@ import {
   import { ObjectType, Field, ID } from '@nestjs/graphql';
   import { List } from './list.entity';
   import { User } from '../../users/entities/user.entity';
+  import { Movie } from '../../movies/entities/movie.entity';
   
   @ObjectType()
   @Entity('list_items')
@@ -27,26 +28,27 @@ import {
     @JoinColumn({ name: 'list_id' })
     list: List;
   
-    @Column()
-    listId: string;
+    @Column({ name: 'list_id' }) listId: string;
   
-    @Field(() => Number)
-    @Column()
-    movieId: number;
+    @Field(() => Movie)
+    @ManyToOne(() => Movie)
+  @JoinColumn({ name: 'movie_id' })
+  movie: Movie;
+
+  @Column({ name: 'movie_id' }) 
+  movieId: string;
   
     @Field(() => User)
     @ManyToOne(() => User, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'added_by_id' })
     addedBy: User;
   
-    @Column()
-    addedById: string;
+    @Column({ name: 'added_by_id' }) addedById: string;
   
     @Field(() => Number)
     @Column({ default: 0 })
     order: number;
   
     @Field()
-    @CreateDateColumn()
-    createdAt: Date;
+    @CreateDateColumn({ name: 'created_at' }) createdAt: Date;
   }

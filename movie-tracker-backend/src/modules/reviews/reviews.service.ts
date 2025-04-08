@@ -1,426 +1,730 @@
 // src/modules/reviews/reviews.service.ts
-import { 
-  Injectable, 
-  NotFoundException, 
-  ForbiddenException, 
-  ConflictException,
-  BadRequestException,
-  Inject,
-} from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, FindOptionsWhere } from 'typeorm';
-import { Cache } from 'cache-manager';
+import { Injectable, ConflictException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Repository, FindManyOptions, FindOptionsWhere, DeepPartial, MoreThanOrEqual, Between, LessThanOrEqual } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Review, ReviewStatus } from './entities/review.entity';
-import { ReviewReaction, ReactionType } from './entities/review-reaction.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { BaseService } from '../../common/services/base.service';
+import { CacheService } from '../../common/services/cache.service';
+import { CacheKeyFactory } from '../../common/factories/cache-key.factory';
+import { Review } from './entities/review.entity';
+import { ReviewReaction } from './entities/review-reaction.entity';
+import { User } from '../users/entities/user.entity';
+import { Movie } from '../movies/entities/movie.entity';
+
 import { CreateReviewInput } from './dto/create-review.input';
 import { UpdateReviewInput } from './dto/update-review.input';
-import { ReviewFilters, ReviewSortType } from './types/review-filters.type';
+import { ReviewFilters, UserReviewFilters, MovieReviewFilters } from './types/review-filters.type';
 import { ReviewStats } from './types/review-stats.type';
-import { ModerationAction, ModerationResult } from './types/review-moderation.type';
-import { ReactionSummary } from './types/reaction-summary.type';
-import { User } from '../users/entities/user.entity';
-import { WatchHistoryService } from '../watch-history/watch-history.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { CACHE_KEYS } from './constants/cache-keys.constant';
 import { ReviewEventType } from './events/review.events';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
-import { WatchType } from '../watch-history/entities/watch-history.entity';
+import { ReactionType } from '../../common/enums';
+import { ReviewStatus } from '../../common/enums';
+import { CACHE_KEYS } from './constants/cache-keys.constant';
+import { CacheTTL, EntityCacheTTL } from '../../common/constants/cache-ttl.constants';
 
 @Injectable()
-export class ReviewsService {
+export class ReviewsService extends BaseService<Review> {
+  protected readonly logger = new Logger(ReviewsService.name);
+
   constructor(
     @InjectRepository(Review)
-    private reviewRepository: Repository<Review>,
+    protected readonly reviewRepository: Repository<Review>,
     @InjectRepository(ReviewReaction)
-    private reactionRepository: Repository<ReviewReaction>,
-    private watchHistoryService: WatchHistoryService,
-    private notificationsService: NotificationsService,
-    private eventEmitter: EventEmitter2,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+    private readonly reactionRepository: Repository<ReviewReaction>,
+    protected readonly cacheService: CacheService,
+    protected readonly cacheKeyFactory: CacheKeyFactory,
+    private readonly eventEmitter: EventEmitter2,
+  ) {
+    super(reviewRepository, cacheService, 'review', cacheKeyFactory);
+  }
 
-  async create(input: CreateReviewInput, user: User): Promise<Review> {
-    // Find or create watch history entry
-    let watchHistory = input.watchHistoryId ? 
-      await this.watchHistoryService.findOne(input.watchHistoryId, user) :
-      await this.watchHistoryService.findByMovieAndUser(input.movieId, user.id);
+  /**
+   * Create a new review using TMDB ID
+   * @param input The review input containing tmdbId instead of movieId
+   * @param user The user creating the review
+   * @param moviesService Reference to MoviesService for TMDB ID resolution
+   */
+  async createWithTmdbId(input: CreateReviewInput, user: User, moviesService: any): Promise<Review> {
+    try {
+      // Find the movie by TMDB ID or create it if it doesn't exist
+      const tmdbId = input.tmdbId;
+      let movie = await moviesService.findByTmdbId(tmdbId);
+      
+      if (!movie) {
+        try {
+          // If the movie doesn't exist, fetch it from TMDB and create it
+          const tmdbMovie = await moviesService.tmdbService.getMovie(tmdbId);
+          movie = await moviesService.createOrUpdateFromTMDB(tmdbMovie);
+        } catch (error) {
+          this.logger.error(`Failed to fetch movie with TMDB ID ${tmdbId}:`, error);
+          throw new NotFoundException(`Movie with TMDB ID ${tmdbId} not found`);
+        }
+      }
+      
+      // Now we have the Movie entity with internal UUID
+      // Use that for creating the review instead of the TMDB ID
+      return this.create({
+        ...input,
+        movie,
+        user
+      });
+    } catch (error) {
+      this.logger.error(`Error creating review with TMDB ID: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
 
-    if (!watchHistory) {
-      watchHistory = await this.watchHistoryService.create({
-        movieId: input.movieId,
-        watchedAt: new Date(),
-        rating: input.rating,
-        watchType: WatchType.FIRST_TIME,  // Using the enum
-        userId: user.id,
-        isPrivate: false
+  /**
+   * Update an existing review
+   */
+  async update(id: string, data: DeepPartial<Review>): Promise<Review> {
+    try {
+      const review = await this.reviewRepository.findOne({
+        where: { id },
+        relations: ['user', 'movie']
+      });
+
+      if (!review) {
+        throw new NotFoundException('Review not found');
+      }
+
+      // Check if the user owns this review
+      if (data.user && (data.user as User).id !== review.user.id) {
+        throw new ForbiddenException('You can only update your own reviews');
+      }
+
+      Object.assign(review, data);
+      const updatedReview = await this.reviewRepository.save(review);
+
+      // Clear caches
+      await this.invalidateReviewCaches(updatedReview);
+
+      // Emit event
+      this.eventEmitter.emit(ReviewEventType.REVIEW_UPDATED, {
+        review: updatedReview,
+        user: review.user,
+        timestamp: new Date()
+      });
+
+      return updatedReview;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error updating review ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a review
+   */
+  async remove(id: string, user: User): Promise<boolean> {
+    try {
+      const review = await this.reviewRepository.findOne({
+        where: { id },
+        relations: ['user', 'movie']
+      });
+
+      if (!review) {
+        throw new NotFoundException('Review not found');
+      }
+
+      if (review.user.id !== user.id) {
+        throw new ForbiddenException('You can only delete your own reviews');
+      }
+
+      // Store movie and user IDs before removing the review
+      const { movie, user: reviewUser } = review;
+
+      await this.reviewRepository.remove(review);
+
+      // Clear caches
+      await this.invalidateReviewCaches({
+        id,
+        movie,
+        user: reviewUser
+      } as Review);
+
+      // Emit event
+      this.eventEmitter.emit(ReviewEventType.REVIEW_DELETED, {
+        review,
+        user,
+        timestamp: new Date()
+      });
+
+      return true;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error(`Error removing review ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Find reviews for a specific movie with filtering and pagination
+   */
+  async findByMovie(movieId: string, filters: MovieReviewFilters = {}): Promise<[Review[], number]> {
+    try {
+      const { 
+        page = 1, 
+        limit = 10, 
+        sortBy = 'createdAt', 
+        minRating, 
+        maxRating,
+        onlyVerifiedWatches = false
+      } = filters;
+
+      // Generate cache key based on all parameters
+      const cacheKey = this.cacheKeyFactory.review.movieReviews(movieId);
+      const filterHash = JSON.stringify({ page, limit, sortBy, minRating, maxRating, onlyVerifiedWatches });
+
+      return this.cacheService.getOrFetch(
+        `${cacheKey}:${filterHash}`,
+        async () => {
+          const where: FindOptionsWhere<Review> = { 
+            movie: { id: movieId },
+            status: ReviewStatus.APPROVED
+          };
+
+          if (minRating) {
+            where.rating = MoreThanOrEqual(minRating);
+          }
+
+          if (maxRating) {
+            where.rating = minRating ? Between(minRating, maxRating) : LessThanOrEqual(maxRating);
+          }
+
+          const options: FindManyOptions<Review> = {
+            where,
+            relations: ['user', 'reactions'],
+            order: { 
+              [sortBy]: 'DESC',
+              createdAt: 'DESC'
+            },
+            skip: (page - 1) * limit,
+            take: limit
+          };
+
+          return this.reviewRepository.findAndCount(options);
+        },
+        EntityCacheTTL.REVIEW_DETAILS
+      );
+    } catch (error) {
+      this.logger.error(`Error finding reviews for movie ${movieId}: ${error.message}`, error.stack);
+      
+      // Fallback to direct query if cache fails
+      const where: FindOptionsWhere<Review> = { 
+        movie: { id: movieId },
+        status: ReviewStatus.APPROVED
+      };
+
+      if (filters.minRating) {
+        where.rating = MoreThanOrEqual(filters.minRating);
+      }
+
+      if (filters.maxRating) {
+        where.rating = filters.minRating ? Between(filters.minRating, filters.maxRating) : LessThanOrEqual(filters.maxRating);
+      }
+
+      return this.reviewRepository.findAndCount({
+        where,
+        relations: ['user', 'reactions'],
+        order: { 
+          [filters.sortBy || 'createdAt']: 'DESC',
+          createdAt: 'DESC'
+        },
+        skip: ((filters.page || 1) - 1) * (filters.limit || 10),
+        take: filters.limit || 10
       });
     }
-
-    // Check for existing review
-    const existingReview = await this.reviewRepository.findOne({
-      where: {
-        user: { id: user.id },
-        movie: { id: input.movieId }
-      }
-    });
-
-    if (existingReview) {
-      throw new ConflictException('You have already reviewed this movie');
-    }
-
-    const review = this.reviewRepository.create({
-      ...input,
-      user,
-      watchHistory,
-      status: ReviewStatus.PENDING
-    });
-
-    const savedReview = await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REVIEW_CREATED, {
-      review: savedReview,
-      user,
-      timestamp: new Date()
-    });
-
-    await this.invalidateRelatedCaches(input.movieId, user.id);
-
-    return savedReview;
   }
 
-  async update(id: string, input: UpdateReviewInput, user: User): Promise<Review> {
-    const review = await this.findOne(id);
+  /**
+   * Find reviews by a specific user with filtering and pagination
+   */
+  async findByUser(userId: string, filters: UserReviewFilters = {}): Promise<[Review[], number]> {
+    try {
+      const { 
+        page = 1, 
+        limit = 10, 
+        sortBy = 'createdAt', 
+        minRating, 
+        maxRating,
+        includePrivate = false
+      } = filters;
 
-    if (review.user.id !== user.id) {
-      throw new ForbiddenException('You can only update your own reviews');
-    }
+      // Generate cache key based on all parameters
+      const cacheKey = this.cacheKeyFactory.review.userReviews(userId);
+      const filterHash = JSON.stringify({ page, limit, sortBy, minRating, maxRating, includePrivate });
 
-    Object.assign(review, {
-      ...input,
-      isEdited: true,
-      status: ReviewStatus.PENDING // Reset status for re-moderation
-    });
+      return this.cacheService.getOrFetch(
+        `${cacheKey}:${filterHash}`,
+        async () => {
+          const where: FindOptionsWhere<Review> = { 
+            user: { id: userId },
+            status: ReviewStatus.APPROVED
+          };
 
-    const updatedReview = await this.reviewRepository.save(review);
+          if (minRating) {
+            where.rating = MoreThanOrEqual(minRating);
+          }
 
-    this.eventEmitter.emit(ReviewEventType.REVIEW_UPDATED, {
-      review: updatedReview,
-      user,
-      timestamp: new Date()
-    });
+          if (maxRating) {
+            where.rating = minRating ? Between(minRating, maxRating) : LessThanOrEqual(maxRating);
+          }
 
-    await this.invalidateRelatedCaches(review.movie.id, user.id);
+          const options: FindManyOptions<Review> = {
+            where,
+            relations: ['movie', 'reactions'],
+            order: { 
+              [sortBy]: 'DESC',
+              createdAt: 'DESC'
+            },
+            skip: (page - 1) * limit,
+            take: limit
+          };
 
-    return updatedReview;
-  }
-
-  async findAll(): Promise<Review[]> {
-    return this.reviewRepository.find({
-      where: { status: ReviewStatus.APPROVED },
-      relations: ['user', 'movie', 'reactions'],
-      order: { createdAt: 'DESC' }
-    });
-  }
-
-  async findOne(id: string): Promise<Review> {
-    const review = await this.reviewRepository.findOne({
-      where: { id },
-      relations: ['user', 'movie', 'reactions', 'watchHistory']
-    });
-
-    if (!review) {
-      throw new NotFoundException(`Review with ID ${id} not found`);
-    }
-
-    return review;
-  }
-
-  async findByMovie(movieId: string): Promise<Review[]> {
-    return this.reviewRepository.find({
-      where: { 
-        movie: { id: movieId },
+          return this.reviewRepository.findAndCount(options);
+        },
+        EntityCacheTTL.USER_REVIEW
+      );
+    } catch (error) {
+      this.logger.error(`Error finding reviews for user ${userId}: ${error.message}`, error.stack);
+      
+      // Fallback to direct query if cache fails
+      const where: FindOptionsWhere<Review> = { 
+        user: { id: userId },
         status: ReviewStatus.APPROVED
-      },
-      relations: ['user', 'reactions'],
-      order: { createdAt: 'DESC' }
-    });
-  }
+      };
 
-  async findByUser(userId: string): Promise<Review[]> {
-    return this.reviewRepository.find({
-      where: { user: { id: userId } },
-      relations: ['movie', 'reactions'],
-      order: { createdAt: 'DESC' }
-    });
-  }
-
-  async remove(id: string, user: User): Promise<boolean> {
-    const review = await this.findOne(id);
-
-    if (review.user.id !== user.id) {
-      throw new ForbiddenException('You can only delete your own reviews');
-    }
-
-    await this.reviewRepository.remove(review);
-
-    this.eventEmitter.emit(ReviewEventType.REVIEW_DELETED, {
-      review,
-      user,
-      timestamp: new Date()
-    });
-
-    await this.invalidateRelatedCaches(review.movie.id, user.id);
-
-    return true;
-  }
-
-  async getReactionStats(reviewId: string): Promise<Map<ReactionType, number>> {
-    const reactions = await this.reactionRepository.find({
-      where: { review: { id: reviewId } }
-    });
-
-    const stats = new Map<ReactionType, number>();
-    Object.values(ReactionType).forEach(type => stats.set(type, 0));
-
-    reactions.forEach(reaction => {
-      stats.set(reaction.type, (stats.get(reaction.type) || 0) + 1);
-    });
-
-    return stats;
-  }
-
-  async getUserReaction(reviewId: string, userId: string): Promise<ReactionType | null> {
-    const reaction = await this.reactionRepository.findOne({
-      where: {
-        review: { id: reviewId },
-        user: { id: userId }
+      if (filters.minRating) {
+        where.rating = MoreThanOrEqual(filters.minRating);
       }
-    });
 
-    return reaction?.type || null;
+      if (filters.maxRating) {
+        where.rating = filters.minRating ? Between(filters.minRating, filters.maxRating) : LessThanOrEqual(filters.maxRating);
+      }
+
+      return this.reviewRepository.findAndCount({
+        where,
+        relations: ['movie', 'reactions'],
+        order: { 
+          [filters.sortBy || 'createdAt']: 'DESC',
+          createdAt: 'DESC'
+        },
+        skip: ((filters.page || 1) - 1) * (filters.limit || 10),
+        take: filters.limit || 10
+      });
+    }
   }
 
+  /**
+   * Add a reaction to a review
+   */
   async addReaction(input: { reviewId: string; type: ReactionType }, user: User): Promise<Review> {
-    const review = await this.findOne(input.reviewId);
+    try {
+      const review = await this.reviewRepository.findOne({
+        where: { id: input.reviewId },
+        relations: ['reactions', 'user', 'movie']
+      });
 
-    const existingReaction = await this.reactionRepository.findOne({
-      where: {
-        user: { id: user.id },
-        review: { id: input.reviewId },
+      if (!review) {
+        throw new NotFoundException('Review not found');
+      }
+
+      // Check if user has already reacted with this type
+      const existingReaction = review.reactions.find(
+        r => r.user.id === user.id && r.type === input.type
+      );
+
+      if (existingReaction) {
+        throw new ConflictException('You have already reacted with this type');
+      }
+
+      const reaction = this.reactionRepository.create({
+        review,
+        user,
         type: input.type
+      });
+
+      await this.reactionRepository.save(reaction);
+
+      // Update reaction count
+      review.reactionCount = review.reactions.length + 1;
+      await this.reviewRepository.save(review);
+
+      // Clear caches
+      await this.invalidateReactionCaches(review.id, user.id);
+
+      // Emit event
+      this.eventEmitter.emit(ReviewEventType.REACTION_ADDED, {
+        review,
+        user,
+        reactionType: input.type,
+        timestamp: new Date()
+      });
+
+      return review;
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
+        throw error;
       }
-    });
-
-    if (existingReaction) {
-      throw new ConflictException('You have already added this reaction');
+      this.logger.error(`Error adding reaction to review ${input.reviewId}: ${error.message}`, error.stack);
+      throw error;
     }
-
-    const reaction = this.reactionRepository.create({
-      type: input.type,
-      user,
-      review
-    });
-
-    await this.reactionRepository.save(reaction);
-
-    review.reactionCount = await this.reactionRepository.count({
-      where: { review: { id: review.id } }
-    });
-
-    const updatedReview = await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REACTION_ADDED, {
-      review: updatedReview,
-      user,
-      reactionType: input.type,
-      timestamp: new Date()
-    });
-
-    return updatedReview;
   }
 
+  /**
+   * Remove a reaction from a review
+   */
   async removeReaction(reviewId: string, type: ReactionType, user: User): Promise<Review> {
-    const review = await this.findOne(reviewId);
+    try {
+      const review = await this.reviewRepository.findOne({
+        where: { id: reviewId },
+        relations: ['reactions', 'user', 'movie']
+      });
 
-    const reaction = await this.reactionRepository.findOne({
-      where: {
-        user: { id: user.id },
-        review: { id: reviewId },
-        type
+      if (!review) {
+        throw new NotFoundException('Review not found');
       }
-    });
 
-    if (!reaction) {
-      throw new NotFoundException('Reaction not found');
+      const reaction = review.reactions.find(
+        r => r.user.id === user.id && r.type === type
+      );
+
+      if (!reaction) {
+        throw new NotFoundException('Reaction not found');
+      }
+
+      await this.reactionRepository.remove(reaction);
+
+      // Update reaction count
+      review.reactionCount = review.reactions.length - 1;
+      await this.reviewRepository.save(review);
+
+      // Clear caches
+      await this.invalidateReactionCaches(reviewId, user.id);
+
+      // Emit event
+      this.eventEmitter.emit(ReviewEventType.REACTION_REMOVED, {
+        review,
+        user,
+        reactionType: type,
+        timestamp: new Date()
+      });
+
+      return review;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error removing reaction from review ${reviewId}: ${error.message}`, error.stack);
+      throw error;
     }
-
-    await this.reactionRepository.remove(reaction);
-
-    review.reactionCount = await this.reactionRepository.count({
-      where: { review: { id: review.id } }
-    });
-
-    const updatedReview = await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REACTION_REMOVED, {
-      review: updatedReview,
-      user,
-      reactionType: type,
-      timestamp: new Date()
-    });
-
-    return updatedReview;
   }
 
-  private async invalidateRelatedCaches(movieId: string, userId: string): Promise<void> {
-    await Promise.all([
-      this.cacheManager.del(CACHE_KEYS.MOVIE_REVIEWS(movieId)),
-      this.cacheManager.del(CACHE_KEYS.USER_REVIEWS(userId)),
-      this.cacheManager.del(CACHE_KEYS.REVIEW_STATS(movieId)),
-      this.cacheManager.del(CACHE_KEYS.USER_STATS(userId))
-    ]);
-  }
+  /**
+   * Get reaction statistics for a review
+   */
+  async getReactionStats(reviewId: string): Promise<Map<ReactionType, number>> {
+    try {
+      const cacheKey = this.cacheKeyFactory.review.reactions(reviewId);
+      
+      return this.cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          const reactions = await this.reactionRepository.find({
+            where: { review: { id: reviewId } }
+          });
 
-  async reportReview(reviewId: string, reason: string, user: User): Promise<boolean> {
-    const review = await this.findOne(reviewId);
+          const stats = new Map<ReactionType, number>();
+          for (const reaction of reactions) {
+            const currentCount = stats.get(reaction.type) || 0;
+            stats.set(reaction.type, currentCount + 1);
+          }
 
-    if (review.user.id === user.id) {
-      throw new BadRequestException('You cannot report your own review');
+          return stats;
+        },
+        EntityCacheTTL.REVIEW_STATS
+      );
+    } catch (error) {
+      this.logger.error(`Error getting reaction stats for review ${reviewId}: ${error.message}`, error.stack);
+      
+      // Fallback to direct query
+      const reactions = await this.reactionRepository.find({
+        where: { review: { id: reviewId } }
+      });
+
+      const stats = new Map<ReactionType, number>();
+      for (const reaction of reactions) {
+        const currentCount = stats.get(reaction.type) || 0;
+        stats.set(reaction.type, currentCount + 1);
+      }
+
+      return stats;
     }
-
-    review.status = ReviewStatus.FLAGGED;
-    review.moderationReason = reason;
-    review.moderatedAt = new Date();
-
-    await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REVIEW_REPORTED, {
-      review,
-      user,
-      reason,
-      timestamp: new Date()
-    });
-
-    return true;
   }
 
-  async approveReview(reviewId: string): Promise<Review> {
-    const review = await this.findOne(reviewId);
-    review.status = ReviewStatus.APPROVED;
-    review.moderatedAt = new Date();
+  /**
+   * Get a user's reaction to a specific review
+   */
+  async getUserReaction(reviewId: string, userId: string): Promise<ReactionType | null> {
+    try {
+      const cacheKey = this.cacheKeyFactory.generate('review', 'userReaction', [reviewId, userId]);
+      
+      return this.cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          const reaction = await this.reactionRepository.findOne({
+            where: { 
+              review: { id: reviewId },
+              user: { id: userId }
+            }
+          });
 
-    const savedReview = await this.reviewRepository.save(review);
+          return reaction ? reaction.type : null;
+        },
+        EntityCacheTTL.REVIEW_STATS
+      );
+    } catch (error) {
+      this.logger.error(`Error getting user reaction for review ${reviewId}: ${error.message}`, error.stack);
+      
+      // Fallback to direct query
+      try {
+        const reaction = await this.reactionRepository.findOne({
+          where: { 
+            review: { id: reviewId },
+            user: { id: userId }
+          }
+        });
 
-    this.eventEmitter.emit(ReviewEventType.REVIEW_MODERATED, {
-      review: savedReview,
-      action: 'APPROVE',
-      timestamp: new Date()
-    });
-
-    return savedReview;
+        return reaction ? reaction.type : null;
+      } catch (innerError) {
+        this.logger.error(`Error in fallback get user reaction: ${innerError.message}`);
+        return null;
+      }
+    }
   }
 
-  async rejectReview(reviewId: string, reason: string): Promise<Review> {
-    const review = await this.findOne(reviewId);
-    review.status = ReviewStatus.REJECTED;
-    review.moderationReason = reason;
-    review.moderatedAt = new Date();
-
-    const savedReview = await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REVIEW_MODERATED, {
-      review: savedReview,
-      action: 'REJECT',
-      reason,
-      timestamp: new Date()
-    });
-
-    return savedReview;
-  }
-
-  async flagReview(reviewId: string, reason: string): Promise<Review> {
-    const review = await this.findOne(reviewId);
-    review.status = ReviewStatus.FLAGGED;
-    review.moderationReason = reason;
-    review.moderatedAt = new Date();
-    review.isFlagged = true;
-
-    const savedReview = await this.reviewRepository.save(review);
-
-    this.eventEmitter.emit(ReviewEventType.REVIEW_MODERATED, {
-      review: savedReview,
-      action: 'FLAG',
-      reason,
-      timestamp: new Date()
-    });
-
-    return savedReview;
-  }
-
+  /**
+   * Get review statistics for a movie
+   */
   async getMovieReviewStats(movieId: string): Promise<ReviewStats> {
-    const cachedStats = await this.cacheManager.get<ReviewStats>(
-      CACHE_KEYS.REVIEW_STATS(movieId)
-    );
-    if (cachedStats) return cachedStats;
+    try {
+      const cacheKey = this.cacheKeyFactory.review.movieStats(movieId);
+      
+      return this.cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          const [reviews, totalReviews] = await this.findByMovie(movieId);
 
-    const reviews = await this.reviewRepository.find({
-      where: { 
-        movie: { id: movieId },
-        status: ReviewStatus.APPROVED
-      }
-    });
+          if (totalReviews === 0) {
+            return {
+              totalReviews: 0,
+              averageRating: 0,
+              totalReactions: 0,
+              recentReviews: 0,
+              positivePercentage: 0
+            };
+          }
 
-    const stats = {
-      totalReviews: reviews.length,
-      averageRating: reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length || 0,
-      totalReactions: reviews.reduce((acc, r) => acc + r.reactionCount, 0),
-      recentReviews: reviews.filter(r => {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return r.createdAt >= thirtyDaysAgo;
-      }).length,
-      positivePercentage: (reviews.filter(r => r.rating >= 7).length / reviews.length) * 100 || 0
-    };
+          const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+          const totalReactions = reviews.reduce((sum, review) => sum + review.reactionCount, 0);
+          const positivePercentage = (reviews.filter(r => r.rating >= 7).length / totalReviews) * 100;
+          
+          // Calculate reviews from the last 30 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          const recentReviews = reviews.filter(r => 
+            new Date(r.createdAt) > thirtyDaysAgo
+          ).length;
 
-    await this.cacheManager.set(
-      CACHE_KEYS.REVIEW_STATS(movieId),
-      stats,
-      60 * 30 // 30 minutes
-    );
+          const stats: ReviewStats = {
+            totalReviews,
+            averageRating,
+            totalReactions,
+            recentReviews,
+            positivePercentage
+          };
 
-    return stats;
+          return stats;
+        },
+        EntityCacheTTL.MOVIE_REVIEW_STATS
+      );
+    } catch (error) {
+      this.logger.error(`Error getting movie review stats for movie ${movieId}: ${error.message}`, error.stack);
+      
+      // Return default stats on error
+      return {
+        totalReviews: 0,
+        averageRating: 0,
+        totalReactions: 0,
+        recentReviews: 0,
+        positivePercentage: 0
+      };
+    }
   }
 
+  /**
+   * Get review statistics for a user
+   */
   async getUserReviewStats(userId: string): Promise<ReviewStats> {
-    const cachedStats = await this.cacheManager.get<ReviewStats>(
-      CACHE_KEYS.USER_STATS(userId)
-    );
-    if (cachedStats) return cachedStats;
+    try {
+      const cacheKey = this.cacheKeyFactory.review.userStats(userId);
+      
+      return this.cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          const [reviews, totalReviews] = await this.findByUser(userId);
 
-    const reviews = await this.reviewRepository.find({
-      where: { user: { id: userId } }
-    });
+          if (totalReviews === 0) {
+            return {
+              totalReviews: 0,
+              averageRating: 0,
+              totalReactions: 0,
+              recentReviews: 0,
+              positivePercentage: 0
+            };
+          }
 
-    const stats = {
-      totalReviews: reviews.length,
-      averageRating: reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length || 0,
-      totalReactions: reviews.reduce((acc, r) => acc + r.reactionCount, 0),
-      recentReviews: reviews.filter(r => {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return r.createdAt >= thirtyDaysAgo;
-      }).length,
-      positivePercentage: (reviews.filter(r => r.rating >= 7).length / reviews.length) * 100 || 0
-    };
+          const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+          const totalReactions = reviews.reduce((sum, review) => sum + review.reactionCount, 0);
+          const positivePercentage = (reviews.filter(r => r.rating >= 7).length / totalReviews) * 100;
+          
+          // Calculate reviews from the last 30 days
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          const recentReviews = reviews.filter(r => 
+            new Date(r.createdAt) > thirtyDaysAgo
+          ).length;
 
-    await this.cacheManager.set(
-      CACHE_KEYS.USER_STATS(userId),
-      stats,
-      60 * 30 // 30 minutes
-    );
+          const stats: ReviewStats = {
+            totalReviews,
+            averageRating,
+            totalReactions,
+            recentReviews,
+            positivePercentage
+          };
 
-    return stats;
+          return stats;
+        },
+        EntityCacheTTL.REVIEW_STATS
+      );
+    } catch (error) {
+      this.logger.error(`Error getting user review stats for user ${userId}: ${error.message}`, error.stack);
+      
+      // Return default stats on error
+      return {
+        totalReviews: 0,
+        averageRating: 0,
+        totalReactions: 0,
+        recentReviews: 0,
+        positivePercentage: 0
+      };
+    }
+  }
+
+  /**
+   * Find a review by user and movie IDs
+   */
+  async findByUserAndMovie(userId: string, movieId: string): Promise<Review | null> {
+    try {
+      const cacheKey = this.cacheKeyFactory.review.userMovie(userId, movieId);
+      
+      return this.cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          const review = await this.reviewRepository.findOne({
+            where: {
+              user: { id: userId },
+              movie: { id: movieId }
+            },
+            relations: ['reactions']
+          });
+
+          return review;
+        },
+        EntityCacheTTL.USER_REVIEW
+      );
+    } catch (error) {
+      this.logger.error(`Error finding review for user ${userId} and movie ${movieId}: ${error.message}`, error.stack);
+      
+      // Return null on error
+      return null;
+    }
+  }
+
+  /**
+   * Invalidate all caches related to a review
+   */
+  private async invalidateReviewCaches(review: Review): Promise<void> {
+    try {
+      const cachesToInvalidate = [
+        // Review details
+        this.cacheKeyFactory.review.details(review.id),
+        
+        // Collections that include this review
+        this.cacheKeyFactory.review.movieReviews(review.movie.id),
+        this.cacheKeyFactory.review.userReviews(review.user.id),
+        
+        // Review stats
+        this.cacheKeyFactory.review.movieStats(review.movie.id),
+        this.cacheKeyFactory.review.userStats(review.user.id),
+        
+        // User-movie specific review
+        this.cacheKeyFactory.review.userMovie(review.user.id, review.movie.id)
+      ];
+
+      // Also invalidate any pattern-based pagination keys
+      const patternCachesToInvalidate = [
+        `review:movie:${review.movie.id}:*`, 
+        `review:user:${review.user.id}:*`
+      ];
+
+      // Execute invalidations
+      await Promise.all([
+        // Specific cache keys
+        this.cacheService.invalidateMultiple(cachesToInvalidate),
+        
+        // Pattern-based invalidations
+        ...patternCachesToInvalidate.map(pattern => 
+          this.cacheService.invalidatePattern(pattern)
+        )
+      ]);
+
+      this.logger.debug(`Invalidated caches for review ${review.id}`);
+    } catch (error) {
+      this.logger.error(`Error invalidating review caches: ${error.message}`, error.stack);
+      // Don't rethrow as this is a background operation
+    }
+  }
+
+  /**
+   * Invalidate all caches related to reactions
+   */
+  private async invalidateReactionCaches(reviewId: string, userId: string): Promise<void> {
+    try {
+      const cachesToInvalidate = [
+        // Reaction stats
+        this.cacheKeyFactory.review.reactions(reviewId),
+        
+        // User-specific reaction
+        this.cacheKeyFactory.generate('review', 'userReaction', [reviewId, userId]),
+        
+        // Review details (since reactions are part of it)
+        this.cacheKeyFactory.review.details(reviewId)
+      ];
+
+      await this.cacheService.invalidateMultiple(cachesToInvalidate);
+      this.logger.debug(`Invalidated reaction caches for review ${reviewId}`);
+    } catch (error) {
+      this.logger.error(`Error invalidating reaction caches: ${error.message}`, error.stack);
+      // Don't rethrow as this is a background operation
+    }
   }
 }

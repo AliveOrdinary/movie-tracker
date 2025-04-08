@@ -11,17 +11,20 @@ import {
   UsePipes
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
-import { FirebaseAuthGuard } from '../../auth/guards/firebase-auth.guard';
+import { AuthGuard } from '../../auth/guards/auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { UserRole } from 'src/common/enums';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
-
+import { ModerationService } from '../moderation/moderation.service';
 @Controller('reviews')
 export class ReviewsController {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly moderationService: ModerationService
+  ) {}
 
   @Get('movie/:movieId')
   @UsePipes(new ValidationPipe({ transform: true }))
@@ -40,32 +43,33 @@ export class ReviewsController {
   }
 
   @Post(':reviewId/report')
-  @UseGuards(FirebaseAuthGuard)
+  @UseGuards(AuthGuard)
   async reportReview(
     @Param('reviewId') reviewId: string,
     @Body('reason') reason: string,
     @CurrentUser() user: User
   ) {
-    return this.reviewsService.reportReview(reviewId, reason, user);
+    return this.moderationService.reportReview(reviewId, reason, user);
   }
 
   @Post(':reviewId/moderate')
-  @UseGuards(FirebaseAuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.MODERATOR, UserRole.ADMIN)
   async moderateReview(
     @Param('reviewId') reviewId: string,
     @Body('action') action: 'APPROVE' | 'REJECT' | 'FLAG',
     @Body('reason') reason: string,
+    @CurrentUser() user: User
   ) {
     switch (action) {
       case 'APPROVE':
-        return this.reviewsService.approveReview(reviewId);
+        return this.moderationService.approveReview(reviewId, user);
       case 'REJECT':
         if (!reason) throw new Error('Reason is required for rejection');
-        return this.reviewsService.rejectReview(reviewId, reason);
+        return this.moderationService.rejectReview(reviewId, reason, user);
       case 'FLAG':
         if (!reason) throw new Error('Reason is required for flagging');
-        return this.reviewsService.flagReview(reviewId, reason);
+        return this.moderationService.flagReview(reviewId, reason, user);
     }
   }
 

@@ -1,6 +1,6 @@
 // src/modules/reviews/types/reaction-summary.type.ts
 import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { ReactionType } from '../entities/review-reaction.entity';
+import { ReactionType } from 'src/common/enums';
 
 @ObjectType()
 export class ReactionSummary {
