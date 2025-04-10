@@ -31,11 +31,59 @@ export class AddMissingColumnsToWatchHistory1710522000000 implements MigrationIn
       console.log('is_favorite column already exists in watch_history table.');
     }
 
+    // Check if context_tags column exists
+    const contextTagsExists = await columnExists(queryRunner, 'watch_history', 'context_tags');
+    if (!contextTagsExists) {
+      console.log('Adding context_tags column to watch_history table...');
+      await queryRunner.query(`
+        ALTER TABLE watch_history
+        ADD COLUMN context_tags TEXT;
+      `);
+      console.log('context_tags column added successfully.');
+    } else {
+      console.log('context_tags column already exists in watch_history table.');
+    }
+
+    // Check if mood_rating column exists
+    const moodRatingExists = await columnExists(queryRunner, 'watch_history', 'mood_rating');
+    if (!moodRatingExists) {
+      console.log('Adding mood_rating column to watch_history table...');
+      await queryRunner.query(`
+        ALTER TABLE watch_history
+        ADD COLUMN mood_rating INTEGER;
+      `);
+      console.log('mood_rating column added successfully.');
+    } else {
+      console.log('mood_rating column already exists in watch_history table.');
+    }
+
     console.log('Migration completed successfully.');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.log('Reverting migration...');
+
+    // Check if mood_rating column exists before dropping
+    const moodRatingExists = await columnExists(queryRunner, 'watch_history', 'mood_rating');
+    if (moodRatingExists) {
+      console.log('Dropping mood_rating column from watch_history table...');
+      await queryRunner.query(`
+        ALTER TABLE watch_history
+        DROP COLUMN mood_rating;
+      `);
+      console.log('mood_rating column dropped successfully.');
+    }
+
+    // Check if context_tags column exists before dropping
+    const contextTagsExists = await columnExists(queryRunner, 'watch_history', 'context_tags');
+    if (contextTagsExists) {
+      console.log('Dropping context_tags column from watch_history table...');
+      await queryRunner.query(`
+        ALTER TABLE watch_history
+        DROP COLUMN context_tags;
+      `);
+      console.log('context_tags column dropped successfully.');
+    }
 
     // Check if is_favorite column exists before dropping
     const isFavoriteExists = await columnExists(queryRunner, 'watch_history', 'is_favorite');

@@ -1,11 +1,2 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
-
-export class AddMissingColumnsToWatchHistory1741972918225 implements MigrationInterface {
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-    }
-
-    public async down(queryRunner: QueryRunner): Promise<void> {
-    }
-
-}
+// This migration was deleted as part of normalizing watch_history table columns
+// It was an empty migration with no implemented changes
